@@ -1,0 +1,49 @@
+/* SPDX-License-Identifier: MIT */
+/* Theme "default": the custom-property contract every theme must define.
+   Light is the base scheme; dark overrides under [data-theme="dark"].
+   A future theme = one more file redefining these variables. */
+
+:root,
+:root[data-theme="light"] {
+  --bg: #faf9fb;
+  --bg-elev: #ffffff;
+  --bg-sunken: #f1eff4;
+  --fg: #1c1a22;
+  --fg-muted: #6d6878;
+  --border: #e4e1ea;
+  --accent: #7c3aed;
+  --accent-soft: #ede9fe;
+  --accent-contrast: #ffffff;
+  --star: #f59e0b;
+  --heart: #e11d48;
+  --danger: #dc2626;
+  --success: #059669;
+  --shadow-card: 0 1px 2px rgb(28 26 34 / 0.06), 0 4px 12px rgb(28 26 34 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(28 26 34 / 0.08), 0 10px 24px rgb(28 26 34 / 0.1);
+}
+
+:root[data-theme="dark"] {
+  --bg: #131118;
+  --bg-elev: #1c1923;
+  --bg-sunken: #0e0c12;
+  --fg: #edeaf2;
+  --fg-muted: #9d97aa;
+  --border: #2c2836;
+  --accent: #a78bfa;
+  --accent-soft: #2b2440;
+  --accent-contrast: #17131f;
+  --star: #fbbf24;
+  --heart: #fb7185;
+  --danger: #f87171;
+  --success: #34d399;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 12px rgb(0 0 0 / 0.25);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.35), 0 10px 24px rgb(0 0 0 / 0.35);
+}
+
+.theme-transitioning,
+.theme-transitioning * {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease !important;
+}

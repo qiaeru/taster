@@ -38,6 +38,17 @@ export default fp(async function staticPlugin(app) {
     });
   }
 
+  // @fastify/static answers 403 (not 404) on the bare directory request, so
+  // "/" needs its own route to reach the OG-injecting template.
+  if (hasBundle) {
+    app.get("/", async (_request, reply) => {
+      return reply
+        .type("text/html; charset=utf-8")
+        .header("Cache-Control", "no-cache")
+        .send(renderIndexHtml("/"));
+    });
+  }
+
   app.setNotFoundHandler(async (request, reply) => {
     if (request.url.startsWith("/api/")) {
       return reply.code(404).send({ error: "NOT_FOUND" });

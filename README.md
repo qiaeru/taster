@@ -42,6 +42,7 @@ Visitors browse a card grid they can filter by category, tag, status, rating or 
 mkdir taster && cd taster
 curl -O https://raw.githubusercontent.com/qiaeru/taster/main/docker-compose.yml
 echo "SESSION_SECRET=$(openssl rand -base64 48)" > .env
+mkdir -p var && sudo chown -R 999:999 var
 docker compose up -d
 ```
 

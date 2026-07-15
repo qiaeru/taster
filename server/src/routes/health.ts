@@ -7,7 +7,7 @@ import { getDb } from "../db/index.js";
 
 export default async function healthRoutes(app: FastifyInstance) {
   app.get("/healthz", { config: { rateLimit: false } }, async () => {
-    let dbOk = false;
+    let dbOk: boolean;
     try {
       getDb().prepare("SELECT 1").get();
       dbOk = true;

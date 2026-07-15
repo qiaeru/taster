@@ -5,7 +5,11 @@ CLAUDE.md
 node_modules
 **/node_modules
 **/dist
+# Incremental-build state: without dist/ (excluded above), a copied
+# .tsbuildinfo makes `tsc -b` skip emit inside the image build.
+**/*.tsbuildinfo
 var
+**/var
 .env
 .env.local
 docs

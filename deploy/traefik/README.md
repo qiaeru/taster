@@ -23,6 +23,8 @@ Use this variant when Traefik already fronts other containers on your server, or
 
 ## Notes
 
+- The container runs as UID/GID 999. Before the first start, create the data folder and give it to that user: `mkdir -p var && sudo chown -R 999:999 var` (run from the project root).
+
 - `TRUST_PROXY=1` and `COOKIE_SECURE=1` are set automatically; `PUBLIC_URL` is derived from `TASTER_DOMAIN`.
 - Your data (SQLite database and images) lives in the project's `var/` folder on the host. Back it up.
 - Traefik stores its ACME state in the `letsencrypt` Docker volume; keep it to avoid re-issuing certificates on every restart.

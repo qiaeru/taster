@@ -80,7 +80,7 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
     statusId = status.id;
   }
 
-  let tags: string[] = [];
+  const tags: string[] = [];
   if (input.tags !== undefined) {
     if (!Array.isArray(input.tags) || input.tags.length > MAX_TAGS) {
       throw new TasteValidationError("INVALID_TAGS");

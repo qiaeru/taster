@@ -22,6 +22,8 @@ This is the simplest way to expose Taster over HTTPS. Caddy negotiates a Let's E
 
 ## Notes
 
+- The container runs as UID/GID 999. Before the first start, create the data folder and give it to that user: `mkdir -p var && sudo chown -R 999:999 var` (run from the project root).
+
 - `TRUST_PROXY=1` and `COOKIE_SECURE=1` are set automatically so Fastify honors the `X-Forwarded-*` headers and session cookies stay HTTPS-only.
 - `PUBLIC_URL` is derived from `TASTER_DOMAIN` and feeds the OpenGraph previews, the Atom feed and the sitemap with absolute URLs.
 - Your data (SQLite database and images) lives in the project's `var/` folder on the host. Back it up.

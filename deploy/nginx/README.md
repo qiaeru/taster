@@ -24,6 +24,8 @@ Use this variant when you already manage certificates with certbot (or another A
 
 ## Notes
 
+- The container runs as UID/GID 999. Before the first start, create the data folder and give it to that user: `mkdir -p var && sudo chown -R 999:999 var` (run from the project root).
+
 - `TRUST_PROXY=1` and `COOKIE_SECURE=1` are set automatically; nginx forwards the `X-Forwarded-*` headers the app expects.
 - Set `PUBLIC_URL` so OpenGraph previews, the Atom feed and the sitemap carry absolute URLs.
 - Your data (SQLite database and images) lives in the project's `var/` folder on the host. Back it up.

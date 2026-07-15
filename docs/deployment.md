@@ -8,8 +8,11 @@ Taster ships as a single Docker image: `ghcr.io/qiaeru/taster` (multi-arch, linu
 mkdir taster && cd taster
 curl -O https://raw.githubusercontent.com/qiaeru/taster/main/docker-compose.yml
 echo "SESSION_SECRET=$(openssl rand -base64 48)" > .env
+mkdir -p var && sudo chown -R 999:999 var
 docker compose up -d
 ```
+
+The container runs as a non-root user with **UID 999, GID 999**. The host directory bind-mounted to `/app/var` must be owned by that UID/GID, otherwise the server cannot open the database file and crashes at startup with `unable to open database file`; the `chown` above handles it.
 
 Open http://your-server:3000, click the lock icon in the header and sign in with `taster` / `changeme`. You are forced to choose a new password immediately.
 

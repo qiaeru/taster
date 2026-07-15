@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: MIT
+# HTTPS deployment with Caddy (automatic Let's Encrypt).
+# Run from the project root:
+#   export TASTER_DOMAIN=tastes.example.com
+#   export SESSION_SECRET="$(openssl rand -base64 48)"
+#   docker compose -f deploy/caddy/docker-compose.caddy.yml up -d
+
+services:
+  taster:
+    build: ../..
+    image: taster:latest
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - ../../var:/app/var
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
+      PUBLIC_URL: https://${TASTER_DOMAIN:?Set TASTER_DOMAIN}
+      COOKIE_SECURE: "1"
+      TRUST_PROXY: "1"
+      SEED_LOCALE: ${SEED_LOCALE:-fr}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      TASTER_DOMAIN: ${TASTER_DOMAIN}
+    depends_on:
+      - taster
+
+volumes:
+  caddy_data:
+  caddy_config:

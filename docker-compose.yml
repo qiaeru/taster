@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: MIT
+# Local HTTP deployment. For HTTPS in production, use one of the variants in deploy/.
+
+services:
+  taster:
+    build: .
+    image: taster:latest
+    container_name: taster
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # SQLite database and normalized images. Back this folder up.
+      - ./var:/app/var
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # REQUIRED: generate with `openssl rand -base64 48`.
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      # Public URL of the site (no trailing slash), for OpenGraph previews,
+      # the Atom feed and the sitemap. Example: https://tastes.example.com
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      # Set to 1 when served over HTTPS (secure session cookies).
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      # Set to 1 behind a reverse proxy (Caddy, nginx, Traefik).
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      # Locale of the first-boot categories and statuses: fr or en.
+      SEED_LOCALE: ${SEED_LOCALE:-fr}
+      # Set to 1 once to reset the admin to taster/changeme, then remove it.
+      ADMIN_RESET: ${ADMIN_RESET:-0}
+      LOG_LEVEL: ${LOG_LEVEL:-info}

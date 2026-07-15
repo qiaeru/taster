@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      patch-and-minor:
+        update-types:
+          - patch
+          - minor
+    ignore:
+      # Keep @types/node tracking the Node 24 runtime (engines >=24,
+      # node:24-slim image). Major @types/node bumps run ahead of the
+      # runtime, so they are a deliberate maintainer decision rather than a
+      # weekly Dependabot PR, mirroring the docker node pin below.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Stay on Node 24 LTS for the runtime image; major Node bumps are a
+      # deliberate maintainer decision, not a weekly Dependabot PR.
+      - dependency-name: node
+        update-types:
+          - version-update:semver-major

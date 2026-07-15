@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build Docker image
+        run: docker build -t taster:ci .
+
+      # One install at the repo root: npm workspaces hoist the production
+      # dependencies of all three workspaces into the root node_modules, so a
+      # single scan covers everything. LGPL-3.0-or-later (alone and in the
+      # composite expression) covers sharp's prebuilt libvips binaries, which
+      # are dynamically linked and fine to redistribute with an MIT app.
+      - name: Check dependency licenses
+        run: |
+          npm install --omit=dev --no-audit --no-fund
+          npx --yes license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;OFL-1.1;CC0-1.0;Unlicense;0BSD;BlueOak-1.0.0;LGPL-3.0-or-later;Apache-2.0 AND LGPL-3.0-or-later' --excludePrivatePackages

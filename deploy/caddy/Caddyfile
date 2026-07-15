@@ -1,0 +1,4 @@
+{$TASTER_DOMAIN:localhost} {
+	encode gzip zstd
+	reverse_proxy taster:3000
+}

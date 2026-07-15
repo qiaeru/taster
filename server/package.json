@@ -22,8 +22,11 @@
     "@taster/shared": "*",
     "@zxcvbn-ts/core": "^4.1.2",
     "@zxcvbn-ts/language-common": "^4.1.2",
+    "@zxcvbn-ts/language-en": "^4.1.1",
+    "@zxcvbn-ts/language-fr": "^4.1.1",
     "dotenv": "^17.4.2",
     "fastify": "^5.10.0",
+    "fastify-plugin": "^6.0.0",
     "hash-wasm": "^4.12.0",
     "sharp": "^0.35.3"
   },

@@ -21,6 +21,9 @@ import categoryRoutes from "./routes/categories.js";
 import uploadsPlugin from "./routes/uploads.js";
 import seoRoutes from "./routes/seo.js";
 import manifestRoutes from "./routes/manifest.js";
+import adminTasteRoutes from "./routes/admin-tastes.js";
+import adminCategoryRoutes from "./routes/admin-categories.js";
+import { requireAdmin } from "./lib/auth.js";
 
 async function buildApp() {
   const app = Fastify({
@@ -80,6 +83,17 @@ async function buildApp() {
       await scope.register(categoryRoutes);
     },
     { prefix: "/api" }
+  );
+
+  await app.register(
+    async (scope) => {
+      // Every admin route requires an authenticated session with the forced
+      // password change already completed.
+      scope.addHook("preHandler", requireAdmin);
+      await scope.register(adminTasteRoutes);
+      await scope.register(adminCategoryRoutes);
+    },
+    { prefix: "/api/admin" }
   );
 
   await app.register(staticPlugin);

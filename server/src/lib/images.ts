@@ -83,6 +83,8 @@ export async function storeImage(buf: Buffer): Promise<string> {
   } catch (err) {
     deleteImageFiles(displayFile);
     if (err instanceof ImageValidationError) throw err;
+    // Surface the decoder message: "INVALID_IMAGE" alone is undebuggable.
+    console.error("[images] normalization failed:", (err as Error)?.message || err);
     throw new ImageValidationError("INVALID_IMAGE");
   }
   return displayFile;

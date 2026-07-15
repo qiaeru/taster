@@ -16,6 +16,11 @@ import staticPlugin from "./plugins/static.js";
 
 import healthRoutes from "./routes/health.js";
 import authRoutes from "./routes/auth.js";
+import tasteRoutes from "./routes/tastes.js";
+import categoryRoutes from "./routes/categories.js";
+import uploadsPlugin from "./routes/uploads.js";
+import seoRoutes from "./routes/seo.js";
+import manifestRoutes from "./routes/manifest.js";
 
 async function buildApp() {
   const app = Fastify({
@@ -61,12 +66,18 @@ async function buildApp() {
     return reply.code(500).send({ error: "INTERNAL_ERROR" });
   });
 
-  // Liveness probe at the root, outside the /api rate-limit scope.
+  // Liveness probe and discovery endpoints at the root, outside the /api
+  // rate-limit scope.
   await app.register(healthRoutes);
+  await app.register(seoRoutes);
+  await app.register(manifestRoutes);
+  await app.register(uploadsPlugin);
 
   await app.register(
     async (scope) => {
       await scope.register(authRoutes);
+      await scope.register(tasteRoutes);
+      await scope.register(categoryRoutes);
     },
     { prefix: "/api" }
   );

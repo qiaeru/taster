@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: MIT
+// Read-side repository for tastes: list summaries and full details.
+
+import type { AdminTasteSummary, TasteDetail, TasteSummary, Rating } from "@taster/shared";
+import { getDb } from "../db/index.js";
+
+// Tags are aggregated with the ASCII unit separator so tag names may contain
+// commas; GROUP_CONCAT's default separator would corrupt them.
+const SEP = String.fromCharCode(31);
+
+interface SummaryRow {
+  id: string;
+  title: string;
+  categoryId: number;
+  rating: number | null;
+  statusId: number | null;
+  imageFile: string | null;
+  refDate: string | null;
+  favorite: number;
+  published: number;
+  createdAt: string;
+  updatedAt: string;
+  tags: string | null;
+}
+
+const SUMMARY_SELECT = `
+  SELECT t.id, t.title, t.category_id AS categoryId, t.rating, t.status_id AS statusId,
+         t.image_file AS imageFile, t.ref_date AS refDate, t.favorite, t.published,
+         t.created_at AS createdAt, t.updated_at AS updatedAt,
+         (SELECT GROUP_CONCAT(tg.name, char(31)) FROM taste_tags tt
+            JOIN tags tg ON tg.id = tt.tag_id WHERE tt.taste_id = t.id) AS tags
+  FROM tastes t
+`;
+
+function toSummary(row: SummaryRow): TasteSummary {
+  return {
+    id: row.id,
+    title: row.title,
+    categoryId: row.categoryId,
+    rating: (row.rating as Rating) ?? null,
+    statusId: row.statusId,
+    tags: row.tags ? row.tags.split(SEP) : [],
+    imageFile: row.imageFile,
+    refDate: row.refDate,
+    favorite: row.favorite === 1,
+    createdAt: row.createdAt,
+  };
+}
+
+export function listPublicSummaries(): TasteSummary[] {
+  const rows = getDb()
+    .prepare(`${SUMMARY_SELECT} WHERE t.published = 1 ORDER BY t.created_at DESC, t.id`)
+    .all() as unknown as SummaryRow[];
+  return rows.map(toSummary);
+}
+
+export function listAdminSummaries(): AdminTasteSummary[] {
+  const rows = getDb()
+    .prepare(`${SUMMARY_SELECT} ORDER BY t.created_at DESC, t.id`)
+    .all() as unknown as SummaryRow[];
+  return rows.map((row) => ({
+    ...toSummary(row),
+    published: row.published === 1,
+    updatedAt: row.updatedAt,
+  }));
+}
+
+export function getTasteDetail(id: string): TasteDetail | null {
+  const db = getDb();
+  const row = db.prepare(`${SUMMARY_SELECT} WHERE t.id = ?`).get(id) as unknown as
+    | (SummaryRow & { lat: number | null; lng: number | null; externalReviewUrl: string | null })
+    | undefined;
+  if (!row) return null;
+  const extra = db
+    .prepare(
+      "SELECT lat, lng, external_review_url AS externalReviewUrl FROM tastes WHERE id = ?"
+    )
+    .get(id) as { lat: number | null; lng: number | null; externalReviewUrl: string | null };
+  const sections = db
+    .prepare(
+      "SELECT subtitle, rating, body_md AS text FROM sections WHERE taste_id = ? ORDER BY sort_order"
+    )
+    .all(id) as unknown as { subtitle: string | null; rating: Rating | null; text: string }[];
+  const links = db
+    .prepare("SELECT label, url FROM links WHERE taste_id = ? ORDER BY sort_order")
+    .all(id) as unknown as { label: string; url: string }[];
+  return {
+    ...toSummary(row),
+    location: extra.lat !== null && extra.lng !== null ? { lat: extra.lat, lng: extra.lng } : null,
+    externalReviewUrl: extra.externalReviewUrl,
+    sections,
+    links,
+    published: row.published === 1,
+    updatedAt: row.updatedAt,
+  };
+}

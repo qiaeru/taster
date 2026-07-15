@@ -1,0 +1,116 @@
+{
+  "app": "taster",
+  "version": 1,
+  "tastes": [
+    {
+      "title": "La Cité des brumes",
+      "category": "films",
+      "rating": 5,
+      "status": "Vu",
+      "favorite": true,
+      "tags": ["Animation", "Aventure"],
+      "date": "2019-07-17",
+      "sections": [
+        {
+          "subtitle": "Visuellement",
+          "rating": 5,
+          "text": "Chaque plan est un tableau. La cité elle-même devient un personnage, avec ses toits qui respirent et ses ruelles qui changent de place la nuit."
+        },
+        {
+          "subtitle": "Histoire",
+          "rating": 4,
+          "text": "Un conte initiatique classique mais sincère. ||La brume est en fait la mémoire des habitants disparus, ce qui recontextualise tout le premier acte.||"
+        }
+      ],
+      "links": [
+        { "label": "Site officiel", "url": "https://example.com/cite-des-brumes" }
+      ]
+    },
+    {
+      "title": "Les Veilleurs du Nord",
+      "category": "series",
+      "rating": 4,
+      "status": "En cours",
+      "tags": ["Fantasy", "Drame"],
+      "date": "2022",
+      "sections": [
+        {
+          "text": "Trois saisons en et la mythologie tient toujours debout. Le rythme lent ne plaira pas à tout le monde, mais l'écriture des personnages secondaires est remarquable."
+        }
+      ]
+    },
+    {
+      "title": "Échos de Lumen",
+      "category": "video-games",
+      "rating": 5,
+      "status": "Terminé",
+      "favorite": true,
+      "tags": ["Metroidvania", "Indé"],
+      "date": "2023-04-12",
+      "sections": [
+        {
+          "subtitle": "Exploration",
+          "rating": 5,
+          "text": "La carte se déplie comme un origami : chaque nouveau pouvoir recolore mentalement toutes les zones déjà visitées."
+        },
+        {
+          "subtitle": "Bande-son",
+          "rating": 4,
+          "text": "Des nappes discrètes qui s'épaississent près des secrets. Astucieux."
+        }
+      ],
+      "links": [
+        { "label": "Fiche Steam", "url": "https://example.com/echos-de-lumen" }
+      ]
+    },
+    {
+      "title": "Tarte fine aux poireaux et chèvre",
+      "category": "food",
+      "rating": 4,
+      "status": "Testé",
+      "tags": ["Végétarien", "Four"],
+      "date": "2024-11",
+      "sections": [
+        {
+          "text": "Recette du dimanche soir par excellence. Le secret : précuire les poireaux au beurre **très** doucement, 25 minutes minimum."
+        }
+      ]
+    },
+    {
+      "title": "Chez Louna (bistrot)",
+      "category": "food",
+      "rating": 5,
+      "status": "Testé",
+      "favorite": true,
+      "tags": ["Restaurant", "Bistrot"],
+      "location": { "lat": 45.764, "lng": 4.8357 },
+      "sections": [
+        {
+          "text": "Une carte courte qui change toutes les semaines, un rapport qualité-prix rare. Réservez, la salle est minuscule."
+        }
+      ]
+    },
+    {
+      "title": "Le Jardin des horloges",
+      "category": "books",
+      "rating": 3,
+      "status": "Lu",
+      "tags": ["Fantastique"],
+      "date": "2021",
+      "sections": [
+        {
+          "text": "Une très belle idée de départ qui s'essouffle au deux tiers. Reste une plume élégante et quelques images inoubliables."
+        }
+      ]
+    },
+    {
+      "title": "Cartographie des songes",
+      "category": "music",
+      "rating": 4,
+      "status": "Écouté",
+      "tags": ["Électro", "Ambient"],
+      "date": "2024-03",
+      "externalReviewUrl": "https://example.com/blog/cartographie-des-songes"
+    }
+  ]
+}

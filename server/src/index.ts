@@ -23,6 +23,7 @@ import seoRoutes from "./routes/seo.js";
 import manifestRoutes from "./routes/manifest.js";
 import adminTasteRoutes from "./routes/admin-tastes.js";
 import adminCategoryRoutes from "./routes/admin-categories.js";
+import adminImportRoutes from "./routes/admin-import.js";
 import { requireAdmin } from "./lib/auth.js";
 
 async function buildApp() {
@@ -92,6 +93,7 @@ async function buildApp() {
       scope.addHook("preHandler", requireAdmin);
       await scope.register(adminTasteRoutes);
       await scope.register(adminCategoryRoutes);
+      await scope.register(adminImportRoutes);
     },
     { prefix: "/api/admin" }
   );

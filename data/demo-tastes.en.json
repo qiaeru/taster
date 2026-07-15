@@ -1,0 +1,116 @@
+{
+  "app": "taster",
+  "version": 1,
+  "tastes": [
+    {
+      "title": "The City of Mists",
+      "category": "films",
+      "rating": 5,
+      "status": "Watched",
+      "favorite": true,
+      "tags": ["Animation", "Adventure"],
+      "date": "2019-07-17",
+      "sections": [
+        {
+          "subtitle": "Visually",
+          "rating": 5,
+          "text": "Every shot is a painting. The city itself becomes a character, with breathing rooftops and alleys that shift places at night."
+        },
+        {
+          "subtitle": "Story",
+          "rating": 4,
+          "text": "A classic but sincere coming-of-age tale. ||The mist is actually the memory of the vanished inhabitants, which recontextualizes the whole first act.||"
+        }
+      ],
+      "links": [
+        { "label": "Official site", "url": "https://example.com/city-of-mists" }
+      ]
+    },
+    {
+      "title": "Watchers of the North",
+      "category": "series",
+      "rating": 4,
+      "status": "Watching",
+      "tags": ["Fantasy", "Drama"],
+      "date": "2022",
+      "sections": [
+        {
+          "text": "Three seasons in and the mythology still holds. The slow pace will not please everyone, but the writing of the side characters is remarkable."
+        }
+      ]
+    },
+    {
+      "title": "Echoes of Lumen",
+      "category": "video-games",
+      "rating": 5,
+      "status": "Finished",
+      "favorite": true,
+      "tags": ["Metroidvania", "Indie"],
+      "date": "2023-04-12",
+      "sections": [
+        {
+          "subtitle": "Exploration",
+          "rating": 5,
+          "text": "The map unfolds like origami: every new power mentally recolors all the areas you have already visited."
+        },
+        {
+          "subtitle": "Soundtrack",
+          "rating": 4,
+          "text": "Subtle pads that thicken near secrets. Clever."
+        }
+      ],
+      "links": [
+        { "label": "Steam page", "url": "https://example.com/echoes-of-lumen" }
+      ]
+    },
+    {
+      "title": "Leek and goat cheese tart",
+      "category": "food",
+      "rating": 4,
+      "status": "Tested",
+      "tags": ["Vegetarian", "Oven"],
+      "date": "2024-11",
+      "sections": [
+        {
+          "text": "The perfect Sunday-evening recipe. The secret: pre-cook the leeks in butter **very** gently, 25 minutes minimum."
+        }
+      ]
+    },
+    {
+      "title": "Louna's Bistro",
+      "category": "food",
+      "rating": 5,
+      "status": "Tested",
+      "favorite": true,
+      "tags": ["Restaurant", "Bistro"],
+      "location": { "lat": 45.764, "lng": 4.8357 },
+      "sections": [
+        {
+          "text": "A short menu that changes weekly and rare value for money. Book ahead, the room is tiny."
+        }
+      ]
+    },
+    {
+      "title": "The Garden of Clocks",
+      "category": "books",
+      "rating": 3,
+      "status": "Read",
+      "tags": ["Fantasy"],
+      "date": "2021",
+      "sections": [
+        {
+          "text": "A beautiful premise that runs out of breath two thirds in. An elegant pen and a few unforgettable images remain."
+        }
+      ]
+    },
+    {
+      "title": "Cartography of Dreams",
+      "category": "music",
+      "rating": 4,
+      "status": "Listened",
+      "tags": ["Electro", "Ambient"],
+      "date": "2024-03",
+      "externalReviewUrl": "https://example.com/blog/cartography-of-dreams"
+    }
+  ]
+}

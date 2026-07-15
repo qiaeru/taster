@@ -1,0 +1,47 @@
+{
+  "name": "taster",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted showcase of your personal tastes: rate, tag and review films, series, video games, recipes and more, and share them as a beautiful filterable list.",
+  "license": "MIT",
+  "author": "qiaeru",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qiaeru/taster.git"
+  },
+  "homepage": "https://github.com/qiaeru/taster#readme",
+  "bugs": {
+    "url": "https://github.com/qiaeru/taster/issues"
+  },
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w shared && npm run build -w client && npm run build -w server",
+    "start": "node server/dist/index.js",
+    "typecheck": "tsc -b shared server client",
+    "lint": "eslint \"{shared,server,client}/src/**/*.ts\"",
+    "format": "prettier --write \"{shared,server,client}/src/**/*.{ts,css,json,md}\" \"*.md\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
+    "@typescript-eslint/parser": "^8.64.0",
+    "concurrently": "^10.0.3",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}

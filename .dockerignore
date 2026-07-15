@@ -1,0 +1,14 @@
+.git
+.github
+.claude
+CLAUDE.md
+node_modules
+**/node_modules
+**/dist
+var
+.env
+.env.local
+docs
+deploy
+*.md
+!README.md

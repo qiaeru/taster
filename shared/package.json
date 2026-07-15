@@ -1,0 +1,18 @@
+{
+  "name": "@taster/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript models and the JSON import/export schema shared between the Taster client and server.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./models": "./dist/models.js",
+    "./importSchema": "./dist/importSchema.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  }
+}

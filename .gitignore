@@ -1,0 +1,41 @@
+# Claude Code working files, local to the dev machine.
+CLAUDE.md
+.claude/
+
+# Operating systems.
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+.directory
+
+# Editors and IDEs.
+.vscode/
+.idea/
+.zed/
+*.swp
+*.swo
+*.swn
+*~
+
+# Backups and temporary files.
+*.bak
+*.tmp
+*.orig
+
+# Node.
+node_modules/
+dist/
+build/
+*.log
+*.tsbuildinfo
+coverage/
+
+# Environment and secrets.
+.env
+.env.local
+
+# Runtime data (SQLite database, uploaded images).
+var/

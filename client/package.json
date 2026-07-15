@@ -1,0 +1,26 @@
+{
+  "name": "@taster/client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vanilla TypeScript + Vite frontend for Taster. Tailwind CSS v4 for styling, Heroicons for icons, marked + DOMPurify for review rendering.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@taster/shared": "*",
+    "dompurify": "^3.4.12",
+    "heroicons": "^2.2.0",
+    "marked": "^18.0.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.2",
+    "tailwindcss": "^4.3.2",
+    "vite": "^8.1.4"
+  }
+}

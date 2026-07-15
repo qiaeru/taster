@@ -5,8 +5,10 @@
 import type {
   AdminTasteSummary,
   Category,
+  CategoryInput,
   SessionInfo,
   TasteDetail,
+  TasteInput,
   TasteSummary,
 } from "@taster/shared";
 import { Observable } from "./lib/store.js";
@@ -123,6 +125,29 @@ export const authApi = {
 
 export const adminApi = {
   tastes: () => api.get<AdminTasteSummary[]>("/api/admin/tastes"),
+  createTaste: (input: TasteInput) => api.post<TasteDetail>("/api/admin/tastes", input),
+  updateTaste: (id: string, input: TasteInput) =>
+    api.put<TasteDetail>(`/api/admin/tastes/${id}`, input),
+  deleteTaste: (id: string) => api.delete<{ ok: boolean }>(`/api/admin/tastes/${id}`),
+  uploadImage: async (id: string, blob: Blob, filename: string) => {
+    const form = new FormData();
+    form.append("file", blob, filename);
+    const res = await fetch(`/api/admin/tastes/${id}/image`, {
+      method: "PUT",
+      headers: { "x-csrf-token": await getCsrfToken() },
+      body: form,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(res.status, data?.error || "REQUEST_FAILED");
+    return data as { imageFile: string };
+  },
+  deleteImage: (id: string) => api.delete<{ ok: boolean }>(`/api/admin/tastes/${id}/image`),
+  createCategory: (input: CategoryInput) => api.post<Category>("/api/admin/categories", input),
+  updateCategory: (id: number, input: CategoryInput) =>
+    api.put<Category>(`/api/admin/categories/${id}`, input),
+  deleteCategory: (id: number) => api.delete<{ ok: boolean }>(`/api/admin/categories/${id}`),
+  setStatuses: (id: number, statuses: { id?: number; name: string }[]) =>
+    api.put<Category>(`/api/admin/categories/${id}/statuses`, { statuses }),
 };
 
 export function thumbUrl(imageFile: string): string {

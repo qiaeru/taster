@@ -44,11 +44,16 @@ export function runMigrations(logger?: MinimalLogger): void {
     // BEGIN/COMMIT and re-check referential integrity before committing.
     db.exec("PRAGMA foreign_keys = OFF");
     try {
+      // Only violations the migration introduces abort it: a pre-existing
+      // orphan (manual edit, old bug) must not block every future upgrade.
+      const before = db.prepare("PRAGMA foreign_key_check").all().length;
       transaction(() => {
         db.exec(sql);
-        const violations = db.prepare("PRAGMA foreign_key_check").all();
-        if (violations.length > 0) {
-          throw new Error(`migration ${file} leaves ${violations.length} foreign key violation(s)`);
+        const after = db.prepare("PRAGMA foreign_key_check").all().length;
+        if (after > before) {
+          throw new Error(
+            `migration ${file} introduces ${after - before} foreign key violation(s)`
+          );
         }
         record.run(file);
       })();

@@ -127,7 +127,10 @@ function resolveStatus(categoryId: number, ref: string): number | null {
   return row ? row.id : null;
 }
 
-async function decodeImportImage(image: ImportTaste["image"]): Promise<string | null> {
+async function decodeImportImage(
+  image: ImportTaste["image"],
+  dryRun: boolean
+): Promise<string | null> {
   if (image === undefined || image === null) return null;
   if (
     typeof image !== "object" ||
@@ -147,6 +150,8 @@ async function decodeImportImage(image: ImportTaste["image"]): Promise<string | 
   } catch {
     throw new ImageValidationError("INVALID_IMAGE");
   }
+  // Dry run: shape and size were checked, but nothing touches the disk.
+  if (dryRun) return null;
   return storeImage(buf);
 }
 
@@ -162,7 +167,9 @@ function normalizeCreatedAt(raw: unknown): string | undefined {
   return new Date(ms).toISOString().slice(0, 19).replace("T", " ");
 }
 
-export async function importTastes(payload: unknown): Promise<ImportResult> {
+// With dryRun, the same validation and category/status resolution run but
+// nothing is written: the result predicts what a real import would do.
+export async function importTastes(payload: unknown, dryRun = false): Promise<ImportResult> {
   if (
     typeof payload !== "object" ||
     payload === null ||
@@ -225,7 +232,7 @@ export async function importTastes(payload: unknown): Promise<ImportResult> {
       const clean = validateTasteInput(input);
 
       // Image first: a broken image must fail the item before any write.
-      const imageFile = await decodeImportImage(item.image);
+      const imageFile = await decodeImportImage(item.image, dryRun);
 
       const existing =
         typeof item.id === "string"
@@ -235,18 +242,24 @@ export async function importTastes(payload: unknown): Promise<ImportResult> {
           : undefined;
 
       if (existing) {
-        updateTaste(existing.id, clean);
-        if (imageFile) setTasteImage(existing.id, imageFile);
+        if (!dryRun) {
+          updateTaste(existing.id, clean);
+          if (imageFile) setTasteImage(existing.id, imageFile);
+        }
         updated++;
       } else {
-        // A syntactically valid unknown id is preserved so re-imports of the
-        // same file stay idempotent.
-        const id = createTaste(
-          clean,
-          typeof item.id === "string" && /^[0-9a-fA-F-]{36}$/.test(item.id) ? item.id : undefined,
-          normalizeCreatedAt(item.createdAt)
-        );
-        if (imageFile) setTasteImage(id, imageFile);
+        if (!dryRun) {
+          // A syntactically valid unknown id is preserved so re-imports of
+          // the same file stay idempotent.
+          const id = createTaste(
+            clean,
+            typeof item.id === "string" && /^[0-9a-fA-F-]{36}$/.test(item.id)
+              ? item.id
+              : undefined,
+            normalizeCreatedAt(item.createdAt)
+          );
+          if (imageFile) setTasteImage(id, imageFile);
+        }
         imported++;
       }
     } catch (err) {
@@ -321,7 +334,7 @@ function replaceStatuses(categoryId: number, names: string[]): void {
   });
 }
 
-export function importCategories(payload: unknown): CategoriesImportResult {
+export function importCategories(payload: unknown, dryRun = false): CategoriesImportResult {
   if (
     typeof payload !== "object" ||
     payload === null ||
@@ -380,34 +393,38 @@ export function importCategories(payload: unknown): CategoriesImportResult {
       ) as { id: number } | undefined;
 
       if (existing) {
-        db.prepare(
-          "UPDATE categories SET name = ?, icon = ?, color = ?, updated_at = datetime('now') WHERE id = ?"
-        ).run(name, icon, color, existing.id);
-        if (statuses) replaceStatuses(existing.id, statuses);
+        if (!dryRun) {
+          db.prepare(
+            "UPDATE categories SET name = ?, icon = ?, color = ?, updated_at = datetime('now') WHERE id = ?"
+          ).run(name, icon, color, existing.id);
+          if (statuses) replaceStatuses(existing.id, statuses);
+        }
         updated++;
       } else {
-        const maxOrder = (
-          db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM categories").get() as {
-            m: number;
-          }
-        ).m;
-        // A provided slug is honored when well-formed and free; anything else
-        // falls back to a slug derived from the name.
-        const finalSlug =
-          slug && /^[a-z0-9-]{1,100}$/.test(slug) &&
-          !db.prepare("SELECT 1 FROM categories WHERE slug = ?").get(slug)
-            ? slug
-            : uniqueSlug(name);
-        const info = db
-          .prepare(
-            "INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)"
-          )
-          .run(finalSlug, name, icon, color, maxOrder + 1);
-        if (statuses) replaceStatuses(Number(info.lastInsertRowid), statuses);
+        if (!dryRun) {
+          const maxOrder = (
+            db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM categories").get() as {
+              m: number;
+            }
+          ).m;
+          // A provided slug is honored when well-formed and free; anything else
+          // falls back to a slug derived from the name.
+          const finalSlug =
+            slug && /^[a-z0-9-]{1,100}$/.test(slug) &&
+            !db.prepare("SELECT 1 FROM categories WHERE slug = ?").get(slug)
+              ? slug
+              : uniqueSlug(name);
+          const info = db
+            .prepare(
+              "INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)"
+            )
+            .run(finalSlug, name, icon, color, maxOrder + 1);
+          if (statuses) replaceStatuses(Number(info.lastInsertRowid), statuses);
+        }
         imported++;
       }
     });
-    bumpDataRevision();
+    if (!dryRun) bumpDataRevision();
   })();
 
   return { imported, updated, errors };

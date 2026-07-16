@@ -4,6 +4,7 @@
 
 import { api, ApiError, invalidateCatalog } from "../api.js";
 import { icon } from "../components/Icon.js";
+import { confirmDialog } from "../components/ConfirmDialog.js";
 import { toast } from "../components/Toaster.js";
 import { t, locale$ } from "../i18n/index.js";
 
@@ -88,6 +89,21 @@ function importControl(
       return;
     }
     try {
+      // Dry run first: the server validates everything without writing, so
+      // the admin sees what would happen before committing.
+      const preview = await api.post<ImportOutcome>(`${endpoint}?dry=1`, payload);
+      const proceed = await confirmDialog(
+        t("io.import.preview", {
+          imported: preview.imported,
+          updated: preview.updated,
+          errors: preview.errors.length,
+        }),
+        t("io.import.confirm")
+      );
+      if (!proceed) {
+        fileInput.value = "";
+        return;
+      }
       const result = await api.post<ImportOutcome>(endpoint, payload);
       invalidateCatalog();
       resultBox.hidden = false;

@@ -4,7 +4,7 @@
 // review sections or an external review link, reference links, published and
 // favorite toggles.
 
-import type { Category, TasteDetail, TasteInput } from "@taster/shared";
+import type { Category, ReviewSection, TasteDetail, TasteInput } from "@taster/shared";
 import { adminApi, authApi, publicApi, api, ApiError, invalidateCatalog, displayUrl } from "../api.js";
 import { renderHeader } from "../components/Header.js";
 import { icon } from "../components/Icon.js";
@@ -19,6 +19,29 @@ import { confirmDialog } from "../components/ConfirmDialog.js";
 import { t } from "../i18n/index.js";
 import { resizeForUpload } from "../lib/imageResize.js";
 import { navigate, setNavGuard } from "../router.js";
+
+// Unsaved work is autosaved locally every couple of seconds and restored the
+// next time the same form opens (per taste; "new" has its own slot). Images
+// are not part of the draft: a Blob does not survive localStorage.
+const DRAFT_PREFIX = "taster:draft:";
+
+interface FormDraft {
+  title: string;
+  categoryId: string;
+  rating: TasteInput["rating"];
+  statusId: string;
+  tags: string[];
+  refDate: string | null;
+  lat: string;
+  lng: string;
+  externalMode: boolean;
+  externalUrl: string;
+  sections: ReviewSection[];
+  links: { label: string; url: string }[];
+  published: boolean;
+  favorite: boolean;
+  savedAt: string;
+}
 
 function field(labelText: string, input: HTMLElement, hint?: string): HTMLElement {
   const wrap = document.createElement("div");
@@ -119,6 +142,44 @@ export function renderTasteForm(
     main.appendChild(h1);
     document.title = `${h1.textContent} · Taster`;
 
+    const draftKey = DRAFT_PREFIX + (editId ?? "new");
+    const draft = ((): FormDraft | null => {
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (!raw) return null;
+        const d = JSON.parse(raw) as FormDraft;
+        return typeof d?.title === "string" && Array.isArray(d.tags) && Array.isArray(d.links)
+          ? d
+          : null;
+      } catch {
+        return null;
+      }
+    })();
+    const dropDraft = (): void => {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {
+        /* ignore */
+      }
+    };
+    if (draft) {
+      const notice = document.createElement("div");
+      notice.className = "draft-notice";
+      const text = document.createElement("span");
+      text.textContent = t("form.draft.restored");
+      const discard = document.createElement("button");
+      discard.type = "button";
+      discard.className = "btn";
+      discard.textContent = t("form.draft.discard");
+      discard.addEventListener("click", () => {
+        dropDraft();
+        cleanup?.();
+        start();
+      });
+      notice.append(text, discard);
+      main.appendChild(notice);
+    }
+
     const form = document.createElement("form");
     form.className = "taste-form";
     form.noValidate = true;
@@ -130,7 +191,7 @@ export function renderTasteForm(
     title.className = "input";
     title.required = true;
     title.maxLength = 300;
-    title.value = detail?.title ?? "";
+    title.value = draft?.title ?? detail?.title ?? "";
     form.appendChild(field(t("form.title"), title));
 
     // Category + status (status options follow the category)
@@ -139,7 +200,10 @@ export function renderTasteForm(
         value: String(category.id),
         label: category.name,
       })),
-      value: String(detail?.categoryId ?? categories[0]?.id ?? ""),
+      value:
+        draft && categories.some((c) => String(c.id) === draft.categoryId)
+          ? draft.categoryId
+          : String(detail?.categoryId ?? categories[0]?.id ?? ""),
       label: t("form.category"),
       onChange: () => fillStatuses(),
     });
@@ -149,29 +213,31 @@ export function renderTasteForm(
     const fillStatuses = (): void => {
       const category = categories.find((c) => c.id === Number(categorySel.get()));
       const statuses = category?.statuses ?? [];
+      const wanted = draft ? draft.statusId : detail?.statusId != null ? String(detail.statusId) : "";
       statusSel.setOptions(
         [
           { value: "", label: t("form.status.none") },
           ...statuses.map((status) => ({ value: String(status.id), label: status.name })),
         ],
-        detail?.statusId != null && statuses.some((s) => s.id === detail.statusId)
-          ? String(detail.statusId)
-          : ""
+        statuses.some((s) => String(s.id) === wanted) ? wanted : ""
       );
     };
     fillStatuses();
     form.appendChild(field(t("form.status"), statusSel.el));
 
     // Rating
-    const rating = starInput(detail?.rating ?? null, t("form.rating"));
+    const rating = starInput(
+      draft ? draft.rating ?? null : detail?.rating ?? null,
+      t("form.rating")
+    );
     form.appendChild(field(t("form.rating"), rating.el));
 
     // Tags
-    const tags = tagInput(detail?.tags ?? [], existingTags.map((x) => x.name));
+    const tags = tagInput(draft?.tags ?? detail?.tags ?? [], existingTags.map((x) => x.name));
     form.appendChild(field(t("form.tags"), tags.el, t("form.tags.hint")));
 
     // Date
-    const date = datePrecisionPicker(detail?.refDate ?? null);
+    const date = datePrecisionPicker(draft ? draft.refDate : detail?.refDate ?? null);
     form.appendChild(field(t("form.date"), date.el));
 
     // Image
@@ -279,14 +345,14 @@ export function renderTasteForm(
     lat.className = "input";
     lat.placeholder = t("form.location.lat");
     lat.setAttribute("aria-label", t("form.location.lat"));
-    lat.value = detail?.location ? String(detail.location.lat) : "";
+    lat.value = draft ? draft.lat : detail?.location ? String(detail.location.lat) : "";
     const lng = document.createElement("input");
     lng.type = "number";
     lng.step = "any";
     lng.className = "input";
     lng.placeholder = t("form.location.lng");
     lng.setAttribute("aria-label", t("form.location.lng"));
-    lng.value = detail?.location ? String(detail.location.lng) : "";
+    lng.value = draft ? draft.lng : detail?.location ? String(detail.location.lng) : "";
     geoRow.append(lat, lng);
     form.appendChild(field(t("form.location"), geoRow, t("form.location.hint")));
 
@@ -306,14 +372,14 @@ export function renderTasteForm(
     modeRow.append(sectionsBtn, externalBtn);
     reviewWrap.appendChild(modeRow);
 
-    let externalMode = Boolean(detail?.externalReviewUrl);
-    const sections = sectionEditor(detail?.sections ?? []);
+    let externalMode = draft ? draft.externalMode : Boolean(detail?.externalReviewUrl);
+    const sections = sectionEditor(draft ? draft.sections : detail?.sections ?? []);
     const externalUrl = document.createElement("input");
     externalUrl.type = "url";
     externalUrl.className = "input";
     externalUrl.placeholder = "https://…";
     externalUrl.setAttribute("aria-label", t("form.review.externalUrl"));
-    externalUrl.value = detail?.externalReviewUrl ?? "";
+    externalUrl.value = draft ? draft.externalUrl : detail?.externalReviewUrl ?? "";
     const externalField = field(t("form.review.externalUrl"), externalUrl);
     reviewWrap.append(sections.el, externalField);
 
@@ -335,7 +401,9 @@ export function renderTasteForm(
     form.appendChild(field(t("form.review"), reviewWrap));
 
     // Reference links
-    const links: { label: string; url: string }[] = detail?.links.map((l) => ({ ...l })) ?? [];
+    const links: { label: string; url: string }[] = (
+      draft ? draft.links : detail?.links ?? []
+    ).map((l) => ({ ...l }));
     const linksWrap = document.createElement("div");
     linksWrap.className = "links-editor";
     const linksList = document.createElement("div");
@@ -410,10 +478,10 @@ export function renderTasteForm(
     // Published + favorite
     const published = checkbox(
       t("form.published"),
-      detail?.published ?? true,
+      draft ? draft.published : detail?.published ?? true,
       t("form.published.hint")
     );
-    const favorite = checkbox(t("form.favorite"), detail?.favorite ?? false);
+    const favorite = checkbox(t("form.favorite"), draft ? draft.favorite : detail?.favorite ?? false);
     const togglesRow = document.createElement("div");
     togglesRow.className = "toggles-row";
     togglesRow.append(published.el, favorite.el);
@@ -450,6 +518,37 @@ export function renderTasteForm(
     let saved = false;
     const isDirty = (): boolean => !saved && snapshot() !== initialState;
 
+    // Draft autosave: persist the field values whenever they changed since
+    // the last tick, so a crash or closed tab never loses a review.
+    const collectDraft = (): FormDraft => ({
+      title: title.value,
+      categoryId: categorySel.get(),
+      rating: rating.get(),
+      statusId: statusSel.get(),
+      tags: tags.get(),
+      refDate: date.get(),
+      lat: lat.value,
+      lng: lng.value,
+      externalMode,
+      externalUrl: externalUrl.value,
+      sections: sections.get(),
+      links,
+      published: published.input.checked,
+      favorite: favorite.input.checked,
+      savedAt: new Date().toISOString(),
+    });
+    let lastDraftSnap = initialState;
+    const draftTimer = window.setInterval(() => {
+      const now = snapshot();
+      if (now === lastDraftSnap) return;
+      lastDraftSnap = now;
+      try {
+        localStorage.setItem(draftKey, JSON.stringify(collectDraft()));
+      } catch {
+        /* ignore */
+      }
+    }, 2000);
+
     setNavGuard(async () =>
       isDirty() ? confirmDialog(t("form.leave.confirm"), t("form.leave.action")) : true
     );
@@ -460,6 +559,7 @@ export function renderTasteForm(
     cleanup = () => {
       cleanup = null; // idempotent: the router may call teardown more than once
       setNavGuard(null);
+      window.clearInterval(draftTimer);
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("paste", onPaste);
     };
@@ -536,6 +636,7 @@ export function renderTasteForm(
           await adminApi.deleteImage(result.id).catch(() => undefined);
         }
         saved = true;
+        dropDraft();
         invalidateCatalog();
         toast(t("form.saved"), "success");
         navigate(`/taste/${result.id}`);

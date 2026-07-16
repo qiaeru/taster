@@ -12,7 +12,7 @@ Taster can import tastes from a JSON file (admin, Import and export tab) and exp
 }
 ```
 
-Files are UTF-8. Exports start with a byte order mark (BOM) so Windows editors detect the encoding and display accents correctly, and the import accepts files with or without it. All three keys are required. `tastes` contains one object per taste. Import is per-item: valid entries are saved, invalid ones are reported with their index and an error code, and neither blocks the other. When an imported taste is created (not updated) and carries the `createdAt` field that exports write, that creation date is restored, so a full export then import on a fresh instance keeps the original timeline (default sort order, Atom feed dates).
+Files are UTF-8. Exports start with a byte order mark (BOM) so Windows editors detect the encoding and display accents correctly, and the import accepts files with or without it. All three keys are required. `tastes` contains one object per taste. Before writing anything, the admin import shows a preview (entries to create, to update, and errors) and asks for confirmation; the same dry run is available directly on the API with `?dry=1` on the import endpoints. Import is per-item: valid entries are saved, invalid ones are reported with their index and an error code, and neither blocks the other. When an imported taste is created (not updated) and carries the `createdAt` field that exports write, that creation date is restored, so a full export then import on a fresh instance keeps the original timeline (default sort order, Atom feed dates).
 
 ## Taste fields
 

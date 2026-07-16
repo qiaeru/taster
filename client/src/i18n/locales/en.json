@@ -200,6 +200,8 @@
   "form.cancel": "Cancel",
   "form.leave.confirm": "You have unsaved changes. Leave this page?",
   "form.leave.action": "Leave without saving",
+  "form.draft.restored": "An unsaved draft was restored.",
+  "form.draft.discard": "Discard the draft",
   "form.error.INVALID_URL": "One of the URLs is invalid.",
   "form.error.generic": "Could not save. Check the form fields.",
 
@@ -222,6 +224,8 @@
   "io.tastes.export": "Export tastes",
   "io.import.result": "{{imported}} created, {{updated}} updated, {{errors}} error(s).",
   "io.import.errorLine": "Entry {{index}}: {{code}}",
+  "io.import.preview": "Import preview: {{imported}} to create, {{updated}} to update, {{errors}} error(s). Run the import?",
+  "io.import.confirm": "Import",
   "io.import.invalidFile": "This file is not a valid export.",
   "io.export.withImages": "Include images (the file will be larger)",
   "io.template": "Download a template file",

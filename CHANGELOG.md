@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- The taste form autosaves a local draft every couple of seconds and restores it when the form reopens, so a crash or a closed tab no longer loses a review in progress.
+- The sort direction can be reversed with a dedicated button next to the sort selector.
+- JSON imports show a preview (how many entries would be created, updated or rejected) and ask for confirmation before writing anything.
+- Cards serve a sharper cover image on high-density (retina) screens.
 - Reference links can be reordered with up and down arrows in the edit form.
 - The tag field accepts several tags at once, separated by commas, and a hint under the field says so.
 - The compact view shows each entry's date when sorting by recent additions or by date.

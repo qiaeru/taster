@@ -200,6 +200,8 @@
   "form.cancel": "Annuler",
   "form.leave.confirm": "Des modifications ne sont pas enregistrées. Quitter la page ?",
   "form.leave.action": "Quitter sans enregistrer",
+  "form.draft.restored": "Un brouillon non enregistré a été restauré.",
+  "form.draft.discard": "Ignorer le brouillon",
   "form.error.INVALID_URL": "Une des URL saisies est invalide.",
   "form.error.generic": "Impossible d’enregistrer. Vérifiez les champs du formulaire.",
 
@@ -222,6 +224,8 @@
   "io.tastes.export": "Exporter les goûts",
   "io.import.result": "{{imported}} créé(s), {{updated}} mis à jour, {{errors}} erreur(s).",
   "io.import.errorLine": "Entrée {{index}} : {{code}}",
+  "io.import.preview": "Aperçu de l’import : {{imported}} à créer, {{updated}} à mettre à jour, {{errors}} erreur(s). Lancer l’import ?",
+  "io.import.confirm": "Importer",
   "io.import.invalidFile": "Ce fichier n’est pas un export valide.",
   "io.export.withImages": "Inclure les images (le fichier sera plus lourd)",
   "io.template": "Télécharger un fichier modèle",

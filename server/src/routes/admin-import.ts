@@ -14,9 +14,11 @@ import {
 const IMPORT_BODY_LIMIT = 16 * 1024 * 1024;
 
 export default async function adminImportRoutes(app: FastifyInstance) {
+  // `?dry=1` runs the same validation without writing anything, so the client
+  // can show a preview of what the import would do before committing.
   app.post("/import", { bodyLimit: IMPORT_BODY_LIMIT }, async (request, reply) => {
     try {
-      return await importTastes(request.body);
+      return await importTastes(request.body, (request.query as { dry?: string }).dry === "1");
     } catch (err) {
       if (err instanceof ImportFormatError) {
         return reply.code(400).send({ error: "INVALID_FILE" });
@@ -29,7 +31,7 @@ export default async function adminImportRoutes(app: FastifyInstance) {
   // importing them first lets a tastes file resolve every category by slug.
   app.post("/import/categories", async (request, reply) => {
     try {
-      return importCategories(request.body);
+      return importCategories(request.body, (request.query as { dry?: string }).dry === "1");
     } catch (err) {
       if (err instanceof ImportFormatError) {
         return reply.code(400).send({ error: "INVALID_FILE" });

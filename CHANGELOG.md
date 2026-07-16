@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-16
+
 ### Added
 
 - Cover images can get a focal point (click the preview in the edit form) that card thumbnails keep centered, so portrait covers stop being cropped mid-face; the point travels through JSON export and import.
@@ -24,13 +26,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Tags display in alphabetical order on cards, detail pages and in the edit form.
 - Saving a tag under a new casing (for example "aventure" replacing "Aventure") renames it for every taste using it, instead of silently keeping the old spelling.
+- Clearer sort names ("Date added", "Reference date") and reworked French interface labels.
 
 ### Fixed
 
 - JSON exports start with a UTF-8 byte order mark so Windows editors display accents correctly; the import accepts files with or without it.
 - Cards keep a uniform 3:2 image height in Chromium-based browsers, matching Firefox.
-- The first visible images load at high priority instead of popping in late as one batch over HTTP/1.1.
+- The first visible images load at high priority instead of popping in late as one batch.
 - Buttons center their content; the password change and login buttons no longer stretch full width with a left-aligned label.
+- The image preview in the edit form shows tall images in full instead of clipping them.
 
 ## [0.1.0] - 2026-07-16
 

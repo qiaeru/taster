@@ -1,6 +1,6 @@
 {
   "name": "@taster/server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Fastify 5 backend for Taster. Serves the JSON API, normalized images, SEO endpoints and the static client bundle in a single Node process, with SQLite (node:sqlite) storage.",
   "license": "MIT",

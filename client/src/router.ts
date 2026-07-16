@@ -203,6 +203,9 @@ export function startRouter(): void {
     if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
     const href = anchor.getAttribute("href");
     if (!href || !href.startsWith("/") || href.startsWith("//")) return;
+    // A dotted last segment (/feed.xml, /sitemap.xml) is a document served by
+    // the backend, not an SPA route: let the browser fetch it.
+    if (/\.\w+$/.test(new URL(href, location.origin).pathname)) return;
     e.preventDefault();
     void go(href);
   });

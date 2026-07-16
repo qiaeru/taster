@@ -431,6 +431,9 @@
      so it reads as sorting, not filtering. */
   .sort-wrap {
     position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
   }
   .sort-icon {
     position: absolute;
@@ -444,6 +447,12 @@
   }
   .sort-wrap .select {
     padding-left: 2.4rem;
+  }
+  .rev-btn {
+    height: 2.75rem;
+  }
+  .rev-btn[data-active="true"] {
+    color: var(--accent);
   }
   .search-icon {
     position: absolute;
@@ -1810,6 +1819,7 @@
   .site-footer-link {
     display: inline-flex;
     align-items: center;
+    gap: 0.4em;
     color: inherit;
   }
   .site-footer-link:hover {

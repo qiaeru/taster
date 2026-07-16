@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- The sort selector's icon and the reverse button sit properly inside the toolbar instead of overflowing below it.
+- The Atom feed link in the footer opens the feed instead of reloading the app, and its icon is no longer glued to the text.
+
 ## [0.2.0] - 2026-07-16
 
 ### Added

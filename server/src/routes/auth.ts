@@ -6,8 +6,29 @@ import { getDb } from "../db/index.js";
 import { hashPassword, verifyPassword, validatePassword, POLICY } from "../lib/password.js";
 import { readSessionUser, writeSessionUser, clearSession, requireSession } from "../lib/auth.js";
 
+// Failed logins are tracked per source IP, in memory: a per-account lock
+// would let any visitor lock the admin out at will. An IP that keeps failing
+// only blocks itself; the admin signs in normally from their own address.
+// Entries expire LOCKOUT_MINUTES after the last failure, so the map stays
+// tiny and a legitimate typo streak clears itself.
 const LOCKOUT_THRESHOLD = 10;
 const LOCKOUT_MINUTES = 15;
+const failedLogins = new Map<string, { count: number; resetAt: number }>();
+
+function recordFailedLogin(ip: string, now: number): void {
+  const entry = failedLogins.get(ip);
+  const count = entry && entry.resetAt > now ? entry.count + 1 : 1;
+  failedLogins.set(ip, { count, resetAt: now + LOCKOUT_MINUTES * 60_000 });
+}
+
+function lockedUntil(ip: string, now: number): number | null {
+  if (failedLogins.size > 1000) {
+    for (const [key, entry] of failedLogins) if (entry.resetAt <= now) failedLogins.delete(key);
+  }
+  const entry = failedLogins.get(ip);
+  if (!entry || entry.resetAt <= now) return null;
+  return entry.count >= LOCKOUT_THRESHOLD ? entry.resetAt : null;
+}
 
 // Matches POLICY.minLength: change-password enforces the full policy on the
 // new password anyway, the schema just fails cheap and early.
@@ -23,8 +44,6 @@ interface UserRow {
   password_hash: string;
   must_change_password: number;
   session_epoch: number;
-  failed_attempts: number;
-  locked_until: string | null;
 }
 
 export default async function authRoutes(app: FastifyInstance) {
@@ -54,56 +73,37 @@ export default async function authRoutes(app: FastifyInstance) {
       const body = request.body as { username: string; password: string };
       const username = body.username.trim().toLowerCase();
 
+      const now = Date.now();
+      const blockedUntil = lockedUntil(request.ip, now);
+      if (blockedUntil !== null) {
+        return reply.code(423).send({
+          error: "TOO_MANY_ATTEMPTS",
+          details: { unlockAt: new Date(blockedUntil).toISOString() },
+        });
+      }
+
       const row = db
         .prepare(
-          `SELECT id, username, password_hash, must_change_password, session_epoch,
-                  failed_attempts, locked_until
+          `SELECT id, username, password_hash, must_change_password, session_epoch
            FROM users WHERE username = ?`
         )
         .get(username) as UserRow | undefined;
 
       if (!row) {
         // Generic message, do not leak which side failed.
+        recordFailedLogin(request.ip, now);
         return reply.code(401).send({ error: "INVALID_CREDENTIALS" });
-      }
-
-      if (row.locked_until) {
-        const unlockAt = new Date(row.locked_until + "Z");
-        if (unlockAt > new Date()) {
-          return reply
-            .code(423)
-            .send({ error: "ACCOUNT_LOCKED", details: { unlockAt: unlockAt.toISOString() } });
-        }
-        // Lock expired: restore a full window of attempts. Without this reset
-        // the counter stays at the threshold and a single wrong password
-        // re-locks the account for another full period, indefinitely.
-        db.prepare(
-          "UPDATE users SET failed_attempts = 0, locked_until = NULL, updated_at = datetime('now') WHERE id = ?"
-        ).run(row.id);
       }
 
       const ok = await verifyPassword(row.password_hash, body.password);
       if (!ok) {
-        // Increment in SQL, not from the row read before the (slow) password
-        // verification: concurrent failures would otherwise overwrite each
-        // other's count and delay the lockout.
-        const until = new Date(Date.now() + LOCKOUT_MINUTES * 60_000)
-          .toISOString()
-          .replace("T", " ")
-          .slice(0, 19);
-        db.prepare(
-          `UPDATE users SET failed_attempts = failed_attempts + 1,
-             locked_until = CASE WHEN failed_attempts + 1 >= ? THEN ? ELSE locked_until END,
-             updated_at = datetime('now')
-           WHERE id = ?`
-        ).run(LOCKOUT_THRESHOLD, until, row.id);
+        recordFailedLogin(request.ip, now);
         return reply.code(401).send({ error: "INVALID_CREDENTIALS" });
       }
 
+      failedLogins.delete(request.ip);
       db.prepare(
-        `UPDATE users SET failed_attempts = 0, locked_until = NULL,
-           last_login_at = datetime('now'), updated_at = datetime('now')
-         WHERE id = ?`
+        "UPDATE users SET last_login_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
       ).run(row.id);
 
       writeSessionUser(request, { id: row.id, sessionEpoch: row.session_epoch });
@@ -170,7 +170,6 @@ export default async function authRoutes(app: FastifyInstance) {
       db.prepare(
         `UPDATE users SET password_hash = ?, must_change_password = 0,
            session_epoch = session_epoch + 1,
-           failed_attempts = 0, locked_until = NULL,
            updated_at = datetime('now')
          WHERE id = ?`
       ).run(hash, userId);

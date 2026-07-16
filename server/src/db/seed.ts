@@ -153,7 +153,7 @@ export async function maybeResetAdmin(logger?: MinimalLogger): Promise<void> {
   if (!admin) return;
   db.prepare(
     `UPDATE users SET username = ?, password_hash = ?, must_change_password = 1,
-       session_epoch = session_epoch + 1, failed_attempts = 0, locked_until = NULL,
+       session_epoch = session_epoch + 1,
        updated_at = datetime('now')
      WHERE id = ?`
   ).run(DEFAULT_ADMIN_USERNAME, hash, admin.id);

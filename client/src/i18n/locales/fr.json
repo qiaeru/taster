@@ -96,7 +96,7 @@
   "login.password": "Mot de passe",
   "login.submit": "Se connecter",
   "login.error.invalid": "Identifiants incorrects.",
-  "login.error.locked": "Compte verrouillé après trop de tentatives. Réessayez plus tard.",
+  "login.error.locked": "Trop de tentatives échouées depuis votre connexion. Réessayez dans 15 minutes.",
   "login.error.rateLimited": "Trop de tentatives. Patientez une minute.",
 
   "password.title": "Nouveau mot de passe requis",

@@ -96,7 +96,7 @@
   "login.password": "Password",
   "login.submit": "Sign in",
   "login.error.invalid": "Invalid credentials.",
-  "login.error.locked": "Account locked after too many attempts. Try again later.",
+  "login.error.locked": "Too many failed attempts from your connection. Try again in 15 minutes.",
   "login.error.rateLimited": "Too many attempts. Wait a minute.",
 
   "password.title": "New password required",

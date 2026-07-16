@@ -2,26 +2,31 @@
 // Theme management. A theme is a CSS file defining the custom-property
 // contract (see styles/themes/default.css); the "default" theme ships light
 // and dark schemes selected via data-theme on <html>. Adding a theme later =
-// one more CSS file + one THEMES entry, no component changes.
+// one more CSS file, no component changes.
 
 import { Observable } from "./store.js";
 
 export type Scheme = "light" | "dark";
 
-export const THEMES = ["default"] as const;
-
 const KEY = "taster:scheme";
 
 export const scheme$ = new Observable<Scheme>("light");
 
-function detect(): Scheme {
+function savedScheme(): Scheme | null {
   try {
     const saved = localStorage.getItem(KEY) as Scheme | null;
     if (saved === "light" || saved === "dark") return saved;
   } catch {
     /* ignore */
   }
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return null;
+}
+
+function detect(): Scheme {
+  return (
+    savedScheme() ??
+    (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+  );
 }
 
 let initialized = false;
@@ -40,19 +45,29 @@ function apply(scheme: Scheme): void {
     }, 250);
   }
   document.documentElement.setAttribute("data-theme", scheme);
-  try {
-    localStorage.setItem(KEY, scheme);
-  } catch {
-    /* ignore */
-  }
   initialized = true;
 }
 
 export function initTheme(): void {
   scheme$.set(detect());
   scheme$.subscribe(apply);
+  // Follow live system-preference changes as long as the visitor never chose
+  // manually; a manual toggle persists and wins from then on.
+  window
+    .matchMedia?.("(prefers-color-scheme: dark)")
+    .addEventListener("change", (e: MediaQueryListEvent) => {
+      if (savedScheme() === null) scheme$.set(e.matches ? "dark" : "light");
+    });
 }
 
 export function toggleScheme(): void {
-  scheme$.set(scheme$.get() === "dark" ? "light" : "dark");
+  const next: Scheme = scheme$.get() === "dark" ? "light" : "dark";
+  // Only a manual toggle persists; plain detection must keep following the
+  // system preference across visits.
+  try {
+    localStorage.setItem(KEY, next);
+  } catch {
+    /* ignore */
+  }
+  scheme$.set(next);
 }

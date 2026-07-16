@@ -20,10 +20,6 @@ export class Observable<T> {
     for (const l of this.listeners) l(next);
   }
 
-  update(updater: (prev: T) => T): void {
-    this.set(updater(this.value));
-  }
-
   subscribe(listener: Listener<T>): () => void {
     this.listeners.add(listener);
     listener(this.value);

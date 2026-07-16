@@ -5,6 +5,7 @@
 
 import type { ReviewSection } from "@taster/shared";
 import { icon } from "./Icon.js";
+import { tip } from "./Tooltip.js";
 import { starInput, type StarInput } from "./StarRating.js";
 import { t } from "../i18n/index.js";
 import { renderMarkdown } from "../lib/markdown.js";
@@ -49,6 +50,11 @@ export function sectionEditor(initial: ReviewSection[]): SectionEditorWidget {
   wrap.appendChild(addBtn);
 
   function paint(): void {
+    // The star widgets hold the live value; capture it before rebuilding them,
+    // otherwise any repaint (add, move, remove) resets the other sections.
+    for (const block of blocks) {
+      if (block.rating) block.ratingValue = block.rating.get();
+    }
     list.innerHTML = "";
     blocks.forEach((block, index) => {
       const card = document.createElement("div");
@@ -72,7 +78,7 @@ export function sectionEditor(initial: ReviewSection[]): SectionEditorWidget {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "icon-btn";
-        btn.title = label;
+        tip(btn, label);
         btn.setAttribute("aria-label", label);
         btn.disabled = disabled;
         btn.appendChild(icon(name, "icon icon-sm"));

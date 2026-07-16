@@ -13,7 +13,9 @@ import {
   thumbUrl,
 } from "../api.js";
 import { renderHeader } from "../components/Header.js";
-import { icon, CATEGORY_ICONS } from "../components/Icon.js";
+import { icon, CATEGORY_ICONS, isOutlineIcon } from "../components/Icon.js";
+import { tip } from "../components/Tooltip.js";
+import { bindPasswordStrength } from "../components/PasswordStrength.js";
 import { starDisplay } from "../components/StarRating.js";
 import { toast } from "../components/Toaster.js";
 import { confirmDialog } from "../components/ConfirmDialog.js";
@@ -138,7 +140,10 @@ function renderPasswordChange(main: HTMLElement, forced: boolean, onDone: () => 
   confirm.autocomplete = "new-password";
   confirm.required = true;
   box.appendChild(field(t("password.current"), current));
-  box.appendChild(field(t("password.new"), next, t("password.hint")));
+  box.appendChild(field(t("password.new"), next));
+  const strength = document.createElement("div");
+  bindPasswordStrength(next, strength);
+  box.appendChild(strength);
   box.appendChild(field(t("password.confirm"), confirm));
 
   const error = document.createElement("p");
@@ -149,7 +154,8 @@ function renderPasswordChange(main: HTMLElement, forced: boolean, onDone: () => 
   const submit = document.createElement("button");
   submit.type = "submit";
   submit.className = "btn btn-primary";
-  submit.textContent = t("password.submit");
+  submit.appendChild(icon("key", "icon icon-sm"));
+  submit.appendChild(document.createTextNode(t("password.submit")));
   box.appendChild(submit);
 
   box.addEventListener("submit", async (e) => {
@@ -276,14 +282,14 @@ async function renderTastesTab(body: HTMLElement): Promise<void> {
     const edit = document.createElement("a");
     edit.href = `/admin/taste/${taste.id}/edit`;
     edit.className = "icon-btn";
-    edit.title = t("detail.edit");
+    tip(edit, t("detail.edit"));
     edit.setAttribute("aria-label", t("detail.edit"));
     edit.appendChild(icon("pencil", "icon icon-sm"));
     right.appendChild(edit);
     const del = document.createElement("button");
     del.type = "button";
     del.className = "icon-btn btn-danger";
-    del.title = t("action.delete");
+    tip(del, t("action.delete"));
     del.setAttribute("aria-label", t("action.delete"));
     del.appendChild(icon("trash", "icon icon-sm"));
     del.addEventListener("click", async () => {
@@ -317,18 +323,132 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
   list.className = "category-list";
   body.appendChild(list);
 
-  const iconSelect = (value: string): HTMLSelectElement => {
-    const sel = document.createElement("select");
-    sel.className = "select";
-    sel.setAttribute("aria-label", t("categories.icon"));
-    for (const name of CATEGORY_ICONS) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      opt.selected = name === value;
-      sel.appendChild(opt);
-    }
-    return sel;
+  // Visual icon library: a grid of showcased Heroicons plus a free-text field
+  // accepting any other Heroicons outline name.
+  const iconPicker = (
+    initial: string,
+    onChange?: (name: string) => void
+  ): { el: HTMLElement; readonly value: string } => {
+    let value = initial;
+    const wrap = document.createElement("div");
+    wrap.className = "icon-picker";
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "btn icon-picker-toggle";
+    tip(toggle, t("categories.icon"));
+    toggle.setAttribute("aria-label", t("categories.icon"));
+    toggle.setAttribute("aria-haspopup", "true");
+    toggle.setAttribute("aria-expanded", "false");
+    const paintToggle = (): void => {
+      toggle.innerHTML = "";
+      toggle.appendChild(icon(value, "icon"));
+      toggle.appendChild(icon("chevron-down", "icon icon-sm"));
+    };
+    paintToggle();
+    wrap.appendChild(toggle);
+
+    const panel = document.createElement("div");
+    panel.className = "icon-picker-panel";
+    panel.hidden = true;
+    wrap.appendChild(panel);
+
+    const grid = document.createElement("div");
+    grid.className = "icon-picker-grid";
+    panel.appendChild(grid);
+
+    const manual = document.createElement("input");
+    manual.type = "text";
+    manual.className = "input";
+    manual.placeholder = t("categories.icon.custom");
+    manual.setAttribute("aria-label", t("categories.icon.custom"));
+
+    const pick = (name: string): void => {
+      value = name;
+      paintToggle();
+      paintGrid();
+      onChange?.(name);
+    };
+
+    const paintGrid = (): void => {
+      grid.innerHTML = "";
+      for (const name of CATEGORY_ICONS) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "icon-picker-item";
+        // Downward: the grid scrolls and would clip a bubble above its top row.
+        tip(btn, name, "bottom");
+        btn.setAttribute("aria-label", name);
+        btn.dataset.active = String(name === value);
+        btn.appendChild(icon(name, "icon"));
+        btn.addEventListener("click", () => {
+          manual.value = "";
+          pick(name);
+          close();
+          toggle.focus();
+        });
+        grid.appendChild(btn);
+      }
+    };
+    paintGrid();
+
+    // Manual entry keeps the panel open so the toggle previews the icon live.
+    manual.addEventListener("input", () => {
+      const name = manual.value.trim();
+      if (!name) return;
+      const known = isOutlineIcon(name);
+      manual.setAttribute("aria-invalid", String(!known));
+      manual.classList.toggle("input-invalid", !known);
+      if (known) pick(name);
+    });
+    if (!(CATEGORY_ICONS as readonly string[]).includes(initial)) manual.value = initial;
+    panel.appendChild(manual);
+
+    const open = (): void => {
+      panel.hidden = false;
+      // Measure once visible, then flip toward the space available.
+      delete panel.dataset.align;
+      delete panel.dataset.open;
+      const rect = panel.getBoundingClientRect();
+      if (rect.right > window.innerWidth - 8) panel.dataset.align = "right";
+      if (rect.bottom > window.innerHeight - 8 && rect.top > window.innerHeight - rect.bottom) {
+        panel.dataset.open = "up";
+      }
+      toggle.setAttribute("aria-expanded", "true");
+      document.addEventListener("click", onOutside, true);
+      document.addEventListener("keydown", onKey);
+    };
+    const close = (): void => {
+      panel.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", onOutside, true);
+      document.removeEventListener("keydown", onKey);
+    };
+    const onOutside = (e: MouseEvent): void => {
+      // Self-heal if the tab was torn down while the panel was open.
+      if (!wrap.isConnected || !wrap.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent): void => {
+      if (!wrap.isConnected) {
+        close();
+        return;
+      }
+      if (e.key === "Escape") {
+        close();
+        toggle.focus();
+      }
+    };
+    toggle.addEventListener("click", () => {
+      if (panel.hidden) open();
+      else close();
+    });
+
+    return {
+      el: wrap,
+      get value() {
+        return value;
+      },
+    };
   };
 
   const categoryCard = (category: Category): HTMLElement => {
@@ -350,15 +470,21 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
     name.setAttribute("aria-label", t("categories.name"));
     headRow.appendChild(name);
 
-    const iconSel = iconSelect(category.icon);
-    headRow.appendChild(iconSel);
+    const iconSel = iconPicker(category.icon, (picked) => {
+      iconPreview.innerHTML = "";
+      iconPreview.appendChild(icon(picked, "icon"));
+    });
 
     const color = document.createElement("input");
     color.type = "color";
     color.className = "color-input";
     color.value = category.color;
     color.setAttribute("aria-label", t("categories.color"));
-    headRow.appendChild(color);
+
+    const controls = document.createElement("div");
+    controls.className = "category-controls";
+    controls.append(iconSel.el, color);
+    headRow.appendChild(controls);
     card.appendChild(headRow);
 
     // Statuses editor
@@ -383,7 +509,8 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
         up.type = "button";
         up.className = "icon-btn";
         up.disabled = index === 0;
-        up.title = t("form.section.moveUp");
+        tip(up, t("form.section.moveUp"));
+        up.setAttribute("aria-label", t("form.section.moveUp"));
         up.appendChild(icon("arrow-up", "icon icon-sm"));
         up.addEventListener("click", () => {
           [statuses[index - 1], statuses[index]] = [statuses[index], statuses[index - 1]];
@@ -393,7 +520,8 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
         down.type = "button";
         down.className = "icon-btn";
         down.disabled = index === statuses.length - 1;
-        down.title = t("form.section.moveDown");
+        tip(down, t("form.section.moveDown"));
+        down.setAttribute("aria-label", t("form.section.moveDown"));
         down.appendChild(icon("arrow-down", "icon icon-sm"));
         down.addEventListener("click", () => {
           [statuses[index], statuses[index + 1]] = [statuses[index + 1], statuses[index]];
@@ -402,7 +530,8 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "icon-btn btn-danger";
-        remove.title = t("action.delete");
+        tip(remove, t("action.delete"));
+        remove.setAttribute("aria-label", t("action.delete"));
         remove.appendChild(icon("trash", "icon icon-sm"));
         remove.addEventListener("click", () => {
           statuses.splice(index, 1);
@@ -500,17 +629,20 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
   newName.required = true;
   newName.placeholder = t("categories.name");
   newName.setAttribute("aria-label", t("categories.name"));
-  const newIcon = iconSelect("tag");
+  const newIcon = iconPicker("tag");
   const newColor = document.createElement("input");
   newColor.type = "color";
   newColor.className = "color-input";
   newColor.value = "#8b5cf6";
   newColor.setAttribute("aria-label", t("categories.color"));
+  const newControls = document.createElement("div");
+  newControls.className = "category-controls";
+  newControls.append(newIcon.el, newColor);
   const submit = document.createElement("button");
   submit.type = "submit";
   submit.className = "btn btn-primary";
   submit.textContent = t("action.add");
-  newRow.append(newName, newIcon, newColor, submit);
+  newRow.append(newName, newControls, submit);
   newForm.appendChild(newRow);
   newForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -527,7 +659,8 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
       toast(t("error.generic"), "error");
     }
   });
-  body.appendChild(newForm);
+  // Creation first, existing categories below, mirroring the tastes tab.
+  body.insertBefore(newForm, list);
 }
 
 // ---- account tab ----
@@ -539,17 +672,6 @@ function renderAccountTab(body: HTMLElement): void {
   h.textContent = t("account.changePassword");
   body.appendChild(h);
   renderPasswordChange(body, false, () => rerender());
-
-  const logout = document.createElement("button");
-  logout.type = "button";
-  logout.className = "btn admin-logout";
-  logout.appendChild(icon("arrow-right-start-on-rectangle", "icon icon-sm"));
-  logout.appendChild(document.createTextNode(t("admin.logout")));
-  logout.addEventListener("click", async () => {
-    await authApi.logout().catch(() => undefined);
-    navigate("/");
-  });
-  body.appendChild(logout);
 }
 
 // ---- dashboard ----
@@ -600,6 +722,19 @@ function renderDashboard(main: HTMLElement): void {
       });
       nav.appendChild(btn);
     }
+
+    // Sign out is an action, not a view: same look as the tabs, pushed to the
+    // right edge of the bar.
+    const logout = document.createElement("button");
+    logout.type = "button";
+    logout.className = "tab-btn tab-logout";
+    logout.appendChild(icon("arrow-right-start-on-rectangle", "icon icon-sm"));
+    logout.appendChild(document.createTextNode(t("admin.logout")));
+    logout.addEventListener("click", async () => {
+      await authApi.logout().catch(() => undefined);
+      navigate("/");
+    });
+    nav.appendChild(logout);
   };
   paintNav();
   main.append(nav, body);

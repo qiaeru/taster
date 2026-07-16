@@ -10,8 +10,11 @@ import { renderHeader } from "../components/Header.js";
 import { tasteCard, tasteRow, type CardContext } from "../components/TasteCard.js";
 import { starDisplay } from "../components/StarRating.js";
 import { icon } from "../components/Icon.js";
+import { selectMenu } from "../components/Select.js";
+import { tip } from "../components/Tooltip.js";
 import { t } from "../i18n/index.js";
 import { searchFold } from "../lib/format.js";
+import { rememberListOrder } from "../lib/listOrder.js";
 import { navigate, replaceQuery } from "../router.js";
 
 type SortKey = "recent" | "date" | "rating" | "title";
@@ -22,7 +25,8 @@ interface ListState {
   cat: string | null; // category slug
   tags: string[];
   status: number | null;
-  minRating: number;
+  minRating: number; // "N stars and up" (stats "rated" tile); URL-only, no select
+  rating: number | null; // exact rating, driven by the filter-bar select
   favorites: boolean;
   sort: SortKey;
   view: ViewKey;
@@ -33,12 +37,14 @@ const VIEW_KEY = "taster:view";
 function readState(params: URLSearchParams): ListState {
   const sort = params.get("sort") as SortKey | null;
   const view = (params.get("view") as ViewKey | null) ?? readSavedView();
+  const exact = Number(params.get("r"));
   return {
     q: params.get("q") ?? "",
     cat: params.get("cat"),
     tags: (params.get("tags") ?? "").split(",").filter(Boolean),
     status: params.get("status") ? Number(params.get("status")) : null,
     minRating: params.get("min") ? Number(params.get("min")) : 0,
+    rating: exact >= 1 && exact <= 5 ? exact : null,
     favorites: params.get("fav") === "1",
     sort: sort && ["recent", "date", "rating", "title"].includes(sort) ? sort : "recent",
     view: ["grid", "compact", "tiers"].includes(view ?? "") ? (view as ViewKey) : "grid",
@@ -60,6 +66,7 @@ function writeState(state: ListState): void {
   if (state.tags.length) params.set("tags", state.tags.join(","));
   if (state.status !== null) params.set("status", String(state.status));
   if (state.minRating > 0) params.set("min", String(state.minRating));
+  if (state.rating !== null) params.set("r", String(state.rating));
   if (state.favorites) params.set("fav", "1");
   if (state.sort !== "recent") params.set("sort", state.sort);
   if (state.view !== "grid") params.set("view", state.view);
@@ -104,6 +111,7 @@ function applyFilters(catalog: Catalog, state: ListState): TasteSummary[] {
     if (category && taste.categoryId !== category.id) return false;
     if (state.favorites && !taste.favorite) return false;
     if (state.minRating > 0 && (taste.rating ?? 0) < state.minRating) return false;
+    if (state.rating !== null && taste.rating !== state.rating) return false;
     if (state.status !== null && taste.statusId !== state.status) return false;
     if (state.tags.length && !state.tags.every((tag) => taste.tags.includes(tag))) return false;
     if (fold) {
@@ -118,15 +126,76 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
   const state = readState(params);
   let catalog: Catalog | null = null;
   let disposed = false;
+  let tagsExpanded = false;
+
+  // "/" jumps to the search field, unless the visitor is already typing.
+  const onSlashKey = (e: KeyboardEvent): void => {
+    if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target as HTMLElement;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable
+    )
+      return;
+    const search = main.querySelector<HTMLInputElement>(".search input");
+    if (!search) return;
+    e.preventDefault();
+    search.focus();
+  };
+  document.addEventListener("keydown", onSlashKey);
 
   root.appendChild(renderHeader());
   const main = document.createElement("main");
   main.className = "list-page";
   root.appendChild(main);
 
-  const loading = document.createElement("p");
-  loading.className = "muted loading";
-  loading.textContent = "…";
+  // Floating back-to-top button once the list has been scrolled a while.
+  // Attached to root: main's content is wiped when the catalog arrives.
+  const toTop = document.createElement("button");
+  toTop.type = "button";
+  toTop.className = "icon-btn to-top";
+  toTop.hidden = true;
+  toTop.setAttribute("aria-label", t("list.backToTop"));
+  tip(toTop, t("list.backToTop"));
+  toTop.appendChild(icon("arrow-up"));
+  toTop.addEventListener("click", () => {
+    window.scrollTo({
+      top: 0,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  });
+  root.appendChild(toTop);
+  const onScroll = (): void => {
+    toTop.hidden = window.scrollY < window.innerHeight * 1.5;
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // Loading skeleton: ghost cards until the catalog arrives. The cards are
+  // decorative (aria-hidden); a live status conveys the loading state to
+  // assistive tech, which the previous "…" paragraph did implicitly.
+  const loadingStatus = document.createElement("p");
+  loadingStatus.className = "sr-only";
+  loadingStatus.setAttribute("role", "status");
+  loadingStatus.textContent = t("list.loading");
+  main.appendChild(loadingStatus);
+  const loading = document.createElement("div");
+  loading.className = "card-grid";
+  loading.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 8; i++) {
+    const card = document.createElement("div");
+    card.className = "skeleton-card";
+    const media = document.createElement("div");
+    media.className = "skeleton-block skeleton-media";
+    const line = document.createElement("div");
+    line.className = "skeleton-block skeleton-line";
+    const short = document.createElement("div");
+    short.className = "skeleton-block skeleton-line skeleton-line-short";
+    card.append(media, line, short);
+    loading.appendChild(card);
+  }
   main.appendChild(loading);
 
   loadCatalog()
@@ -183,21 +252,25 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     toolbar.appendChild(searchWrap);
 
     // Sort
-    const sortSel = document.createElement("select");
-    sortSel.className = "select";
-    sortSel.setAttribute("aria-label", t("sort.label"));
-    for (const key of ["recent", "date", "rating", "title"] as SortKey[]) {
-      const opt = document.createElement("option");
-      opt.value = key;
-      opt.textContent = t(`sort.${key}`);
-      opt.selected = state.sort === key;
-      sortSel.appendChild(opt);
-    }
-    sortSel.addEventListener("change", () => {
-      state.sort = sortSel.value as SortKey;
-      update();
+    const sortWrap = document.createElement("div");
+    sortWrap.className = "sort-wrap";
+    sortWrap.appendChild(icon("arrows-up-down", "icon icon-sm sort-icon"));
+    // No tooltip here: it would sit over the open dropdown and hide options;
+    // the arrows icon already marks this select as the sort control.
+    const sortSel = selectMenu({
+      options: (["recent", "date", "rating", "title"] as SortKey[]).map((key) => ({
+        value: key,
+        label: t(`sort.${key}`),
+      })),
+      value: state.sort,
+      label: t("sort.label"),
+      onChange: (value) => {
+        state.sort = value as SortKey;
+        update();
+      },
     });
-    toolbar.appendChild(sortSel);
+    sortWrap.appendChild(sortSel.el);
+    toolbar.appendChild(sortWrap);
 
     // View switch
     const views = document.createElement("div");
@@ -214,7 +287,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       btn.type = "button";
       btn.className = "icon-btn view-btn";
       btn.dataset.view = def.key;
-      btn.title = t(`view.${def.key}`);
+      tip(btn, t(`view.${def.key}`), "bottom");
       btn.setAttribute("aria-label", t(`view.${def.key}`));
       btn.appendChild(icon(def.iconName));
       btn.addEventListener("click", () => {
@@ -229,15 +302,26 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     const random = document.createElement("button");
     random.type = "button";
     random.className = "icon-btn";
-    random.title = t("filters.random");
+    tip(random, t("filters.random"), "bottom", "end");
     random.setAttribute("aria-label", t("filters.random"));
-    random.appendChild(icon("sparkles"));
+    random.appendChild(icon("die"));
     random.addEventListener("click", () => {
       if (!catalog) return;
+      const die = random.querySelector("svg");
+      // Ignore a second click while the die is mid-roll: re-adding the class
+      // does not restart the animation, so a second animationend listener
+      // would fire the same event and navigate twice.
+      if (die?.classList.contains("die-roll")) return;
       const pool = applyFilters(catalog, state);
       if (!pool.length) return;
       const pick = pool[Math.floor(Math.random() * pool.length)];
-      navigate(`/taste/${pick.id}`);
+      // Little die roll before revealing the pick.
+      if (die && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        die.classList.add("die-roll");
+        die.addEventListener("animationend", () => navigate(`/taste/${pick.id}`), { once: true });
+      } else {
+        navigate(`/taste/${pick.id}`);
+      }
     });
     toolbar.appendChild(random);
 
@@ -262,6 +346,25 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     update();
   }
 
+  function chipCount(n: number): HTMLElement {
+    const count = document.createElement("span");
+    count.className = "chip-count";
+    count.textContent = String(n);
+    return count;
+  }
+
+  // Per-category totals depend only on the catalog, not on filter state, so
+  // compute them once instead of scanning all tastes per category per update.
+  let categoryCounts: Map<number, number> | null = null;
+  function getCategoryCounts(): Map<number, number> {
+    if (!categoryCounts) {
+      categoryCounts = new Map();
+      for (const taste of catalog?.tastes ?? [])
+        categoryCounts.set(taste.categoryId, (categoryCounts.get(taste.categoryId) ?? 0) + 1);
+    }
+    return categoryCounts;
+  }
+
   function renderCategoryChips(): void {
     if (!catalog) return;
     chipsNav.innerHTML = "";
@@ -270,6 +373,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     all.className = "cat-chip";
     all.dataset.active = String(state.cat === null);
     all.textContent = t("filters.all");
+    all.appendChild(chipCount(catalog.tastes.length));
     all.addEventListener("click", () => {
       state.cat = null;
       state.status = null;
@@ -285,6 +389,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       chip.dataset.active = String(state.cat === category.slug);
       chip.appendChild(icon(category.icon, "icon icon-sm"));
       chip.appendChild(document.createTextNode(category.name));
+      chip.appendChild(chipCount(getCategoryCounts().get(category.id) ?? 0));
       chip.addEventListener("click", () => {
         if (state.cat === category.slug) {
           state.cat = null;
@@ -309,10 +414,10 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     const tagCounts = new Map<string, number>();
     for (const taste of scope)
       for (const tag of taste.tags) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
-    const topTags = [...tagCounts.entries()]
+    const allTags = [...tagCounts.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .slice(0, 12)
       .map(([name]) => name);
+    const topTags = tagsExpanded ? allTags : allTags.slice(0, 12);
     // Selected tags always stay visible even when outside the top list.
     for (const selected of state.tags) if (!topTags.includes(selected)) topTags.unshift(selected);
 
@@ -328,6 +433,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
         chip.dataset.active = String(state.tags.includes(tag));
         chip.setAttribute("aria-pressed", String(state.tags.includes(tag)));
         chip.textContent = tag;
+        chip.appendChild(chipCount(tagCounts.get(tag) ?? 0));
         chip.addEventListener("click", () => {
           state.tags = state.tags.includes(tag)
             ? state.tags.filter((x) => x !== tag)
@@ -335,6 +441,19 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
           update();
         });
         group.appendChild(chip);
+      }
+      if (allTags.length > 12) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "chip chip-toggle";
+        more.textContent = tagsExpanded
+          ? t("filters.lessTags")
+          : t("filters.moreTags", { count: allTags.length - 12 });
+        more.addEventListener("click", () => {
+          tagsExpanded = !tagsExpanded;
+          update();
+        });
+        group.appendChild(more);
       }
       filterBar.appendChild(group);
     }
@@ -345,47 +464,65 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     // Status select: only when exactly one category is active (statuses are
     // per-category).
     if (category && category.statuses.length) {
-      const statusSel = document.createElement("select");
-      statusSel.className = "select select-sm";
-      statusSel.setAttribute("aria-label", t("filters.status"));
-      const any = document.createElement("option");
-      any.value = "";
-      any.textContent = t("filters.anyStatus");
-      statusSel.appendChild(any);
-      for (const status of category.statuses) {
-        const opt = document.createElement("option");
-        opt.value = String(status.id);
-        opt.textContent = status.name;
-        opt.selected = state.status === status.id;
-        statusSel.appendChild(opt);
-      }
-      statusSel.addEventListener("change", () => {
-        state.status = statusSel.value ? Number(statusSel.value) : null;
-        update();
+      const statusSel = selectMenu({
+        options: [
+          { value: "", label: t("filters.anyStatus") },
+          ...category.statuses.map((status) => ({
+            value: String(status.id),
+            label: status.name,
+          })),
+        ],
+        value: state.status !== null ? String(state.status) : "",
+        label: t("filters.status"),
+        small: true,
+        onChange: (value) => {
+          state.status = value ? Number(value) : null;
+          update();
+        },
       });
-      controls.appendChild(statusSel);
+      controls.appendChild(statusSel.el);
     }
 
-    // Minimum rating
-    const minSel = document.createElement("select");
-    minSel.className = "select select-sm";
-    minSel.setAttribute("aria-label", t("filters.minRating"));
-    const anyRating = document.createElement("option");
-    anyRating.value = "0";
-    anyRating.textContent = t("filters.anyRating");
-    minSel.appendChild(anyRating);
-    for (let i = 5; i >= 1; i--) {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = `${"★".repeat(i)} ${t(`rating.${i}`)}`;
-      opt.selected = state.minRating === i;
-      minSel.appendChild(opt);
+    // Rating: the select filters on an exact rating; the removable chip covers
+    // the "N stars and up" links coming from the statistics page (?min=1).
+    if (state.minRating > 0) {
+      const min = document.createElement("button");
+      min.type = "button";
+      min.className = "chip chip-toggle";
+      min.dataset.active = "true";
+      min.setAttribute("aria-pressed", "true");
+      min.setAttribute("aria-label", t("filters.removeRating"));
+      tip(min, t("filters.removeRating"));
+      min.appendChild(
+        document.createTextNode(
+          t("filters.minRatingChip", { stars: "★".repeat(state.minRating) })
+        )
+      );
+      min.appendChild(icon("x-mark", "icon icon-sm"));
+      min.addEventListener("click", () => {
+        state.minRating = 0;
+        update();
+      });
+      controls.appendChild(min);
+    } else {
+      const ratingSel = selectMenu({
+        options: [
+          { value: "", label: t("filters.anyRating") },
+          ...[5, 4, 3, 2, 1].map((i) => ({
+            value: String(i),
+            label: `${"★".repeat(i)} ${t(`rating.${i}`)}`,
+          })),
+        ],
+        value: state.rating !== null ? String(state.rating) : "",
+        label: t("filters.rating"),
+        small: true,
+        onChange: (value) => {
+          state.rating = value ? Number(value) : null;
+          update();
+        },
+      });
+      controls.appendChild(ratingSel.el);
     }
-    minSel.addEventListener("change", () => {
-      state.minRating = Number(minSel.value);
-      update();
-    });
-    controls.appendChild(minSel);
 
     // Favorites toggle
     const fav = document.createElement("button");
@@ -408,6 +545,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       state.tags.length ||
       state.status !== null ||
       state.minRating > 0 ||
+      state.rating !== null ||
       state.favorites;
     if (hasFilters) {
       const clear = document.createElement("button");
@@ -415,21 +553,24 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       clear.className = "chip chip-toggle";
       clear.appendChild(icon("x-mark", "icon icon-sm"));
       clear.appendChild(document.createTextNode(t("filters.clear")));
-      clear.addEventListener("click", () => {
-        state.q = "";
-        state.cat = null;
-        state.tags = [];
-        state.status = null;
-        state.minRating = 0;
-        state.favorites = false;
-        const search = main.querySelector<HTMLInputElement>(".search input");
-        if (search) search.value = "";
-        update();
-      });
+      clear.addEventListener("click", resetFilters);
       controls.appendChild(clear);
     }
 
     filterBar.appendChild(controls);
+  }
+
+  function resetFilters(): void {
+    state.q = "";
+    state.cat = null;
+    state.tags = [];
+    state.status = null;
+    state.minRating = 0;
+    state.rating = null;
+    state.favorites = false;
+    const search = main.querySelector<HTMLInputElement>(".search input");
+    if (search) search.value = "";
+    update();
   }
 
   function renderResults(): void {
@@ -457,6 +598,17 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       text.className = "muted";
       text.textContent = catalog.tastes.length ? t("list.empty.text") : t("list.empty.noData");
       empty.append(title, text);
+      // Tastes exist but none matched: offer the reset right where the dead
+      // end happens instead of sending the visitor back up to the filter bar.
+      if (catalog.tastes.length) {
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "btn empty-reset";
+        reset.appendChild(icon("x-mark", "icon icon-sm"));
+        reset.appendChild(document.createTextNode(t("filters.clear")));
+        reset.addEventListener("click", resetFilters);
+        empty.appendChild(reset);
+      }
       results.appendChild(empty);
       return;
     }
@@ -470,6 +622,8 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
         groups.push({ rating: r, items: filtered.filter((x) => x.rating === r) });
       }
       groups.push({ rating: null, items: filtered.filter((x) => x.rating === null) });
+      for (const group of groups) group.items = sortTastes(group.items, rowSort);
+      rememberListOrder(groups.flatMap((group) => group.items.map((x) => x.id)));
 
       for (const group of groups) {
         if (!group.items.length) continue;
@@ -491,7 +645,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
 
         const grid = document.createElement("div");
         grid.className = "card-grid card-grid-tier";
-        for (const taste of sortTastes(group.items, rowSort)) {
+        for (const taste of group.items) {
           grid.appendChild(tasteCard(taste, ctx));
         }
         section.appendChild(grid);
@@ -501,6 +655,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     }
 
     const sorted = sortTastes(filtered, state.sort);
+    rememberListOrder(sorted.map((x) => x.id));
     if (state.view === "compact") {
       const listEl = document.createElement("div");
       listEl.className = "row-list";
@@ -526,5 +681,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
 
   return () => {
     disposed = true;
+    document.removeEventListener("keydown", onSlashKey);
+    window.removeEventListener("scroll", onScroll);
   };
 }

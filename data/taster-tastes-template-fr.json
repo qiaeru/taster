@@ -4,7 +4,7 @@
   "tastes": [
     {
       "title": "La Cité des brumes",
-      "category": "films",
+      "category": "movies",
       "rating": 5,
       "status": "Vu",
       "favorite": true,
@@ -28,7 +28,7 @@
     },
     {
       "title": "Les Veilleurs du Nord",
-      "category": "series",
+      "category": "tv-shows",
       "rating": 4,
       "status": "En cours",
       "tags": ["Fantasy", "Drame"],
@@ -64,25 +64,26 @@
       ]
     },
     {
-      "title": "Tarte fine aux poireaux et chèvre",
-      "category": "food",
+      "title": "Ramen Koyo",
+      "category": "restaurants",
       "rating": 4,
       "status": "Testé",
-      "tags": ["Végétarien", "Four"],
+      "tags": ["Japonais", "Ramen"],
       "date": "2024-11",
+      "location": { "lat": 48.8661, "lng": 2.3522 },
       "sections": [
         {
-          "text": "Recette du dimanche soir par excellence. Le secret : précuire les poireaux au beurre **très** doucement, 25 minutes minimum."
+          "text": "Bouillon tonkotsu d'une profondeur rare et nouilles maison. Dix places au comptoir : arrivez avant midi ou armez-vous de patience."
         }
       ]
     },
     {
       "title": "Chez Louna (bistrot)",
-      "category": "food",
+      "category": "restaurants",
       "rating": 5,
       "status": "Testé",
       "favorite": true,
-      "tags": ["Restaurant", "Bistrot"],
+      "tags": ["Bistrot", "Cuisine de saison"],
       "location": { "lat": 45.764, "lng": 4.8357 },
       "sections": [
         {

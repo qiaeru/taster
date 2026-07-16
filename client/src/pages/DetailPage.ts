@@ -9,8 +9,11 @@ import { renderHeader } from "../components/Header.js";
 import { starDisplay } from "../components/StarRating.js";
 import { geoLink } from "../components/GeoLink.js";
 import { icon } from "../components/Icon.js";
+import { openLightbox } from "../components/Lightbox.js";
+import { tip } from "../components/Tooltip.js";
 import { t } from "../i18n/index.js";
 import { formatPartialDate, formatDateTime } from "../lib/format.js";
+import { readListOrder } from "../lib/listOrder.js";
 import { renderMarkdown } from "../lib/markdown.js";
 
 export function renderDetail(
@@ -58,12 +61,45 @@ export function renderDetail(
         ? category?.statuses.find((s) => s.id === detail.statusId)
         : undefined;
 
+    const nav = document.createElement("div");
+    nav.className = "detail-nav";
     const back = document.createElement("a");
     back.href = "/";
     back.className = "back-link";
     back.appendChild(icon("arrow-left", "icon icon-sm"));
     back.appendChild(document.createTextNode(t("nav.backToList")));
-    main.appendChild(back);
+    nav.appendChild(back);
+
+    // Prev/next within the order the visitor last saw on the list; deep links
+    // (no stored order, or an id outside it) fall back to newest-first. Filter
+    // to ids still in the catalog so a taste deleted since the list was viewed
+    // is skipped rather than linked to a not-found page.
+    const validIds = new Set(catalog.tastes.map((x) => x.id));
+    let order = readListOrder().filter((id) => validIds.has(id));
+    if (!order.includes(detail.id)) {
+      order = [...catalog.tastes]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((x) => x.id);
+    }
+    const index = order.indexOf(detail.id);
+    const neighbors = document.createElement("div");
+    neighbors.className = "detail-nav-arrows";
+    const arrow = (targetId: string | undefined, iconName: string, label: string): void => {
+      if (!targetId) return;
+      const a = document.createElement("a");
+      a.href = `/taste/${targetId}`;
+      a.className = "icon-btn";
+      a.setAttribute("aria-label", label);
+      tip(a, label);
+      a.appendChild(icon(iconName, "icon icon-sm"));
+      neighbors.appendChild(a);
+    };
+    if (index !== -1) {
+      arrow(order[index - 1], "arrow-left", t("detail.prev"));
+      arrow(order[index + 1], "arrow-right", t("detail.next"));
+    }
+    if (neighbors.childElementCount) nav.appendChild(neighbors);
+    main.appendChild(nav);
 
     if (!detail.published) {
       const banner = document.createElement("p");
@@ -85,7 +121,15 @@ export function renderDetail(
       img.decoding = "async";
       img.width = 1600;
       img.height = 1067;
-      figure.appendChild(img);
+      const zoom = document.createElement("button");
+      zoom.type = "button";
+      zoom.className = "media-zoom";
+      // No tooltip: the zoom-in cursor already says it, and a bubble tracking
+      // the whole image on hover would be intrusive.
+      zoom.setAttribute("aria-label", t("detail.image.zoom"));
+      zoom.appendChild(img);
+      zoom.addEventListener("click", () => openLightbox(img.src, detail.title));
+      figure.appendChild(zoom);
       layout.appendChild(figure);
     }
 
@@ -101,7 +145,7 @@ export function renderDetail(
     if (detail.favorite) {
       const heart = document.createElement("span");
       heart.className = "detail-heart";
-      heart.title = t("card.favorite");
+      tip(heart, t("card.favorite"));
       heart.setAttribute("aria-label", t("card.favorite"));
       heart.appendChild(icon("heart-solid", "icon"));
       titleRow.appendChild(heart);
@@ -110,7 +154,7 @@ export function renderDetail(
       const edit = document.createElement("a");
       edit.href = `/admin/taste/${detail.id}/edit`;
       edit.className = "icon-btn";
-      edit.title = t("detail.edit");
+      tip(edit, t("detail.edit"));
       edit.setAttribute("aria-label", t("detail.edit"));
       edit.appendChild(icon("pencil"));
       titleRow.appendChild(edit);

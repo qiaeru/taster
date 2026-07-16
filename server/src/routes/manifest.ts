@@ -8,12 +8,12 @@ const MANIFESTS: Record<string, { name: string; description: string }> = {
   fr: {
     name: "Taster",
     description:
-      "Une vitrine de goûts personnels : films, séries, jeux vidéo, cuisine, livres, musique et plus.",
+      "Une vitrine de goûts personnels : films, séries, jeux vidéo, restaurants, livres, musique et plus.",
   },
   en: {
     name: "Taster",
     description:
-      "A showcase of personal tastes: films, series, video games, food, books, music and more.",
+      "A showcase of personal tastes: movies, TV shows, video games, restaurants, books, music and more.",
   },
 };
 

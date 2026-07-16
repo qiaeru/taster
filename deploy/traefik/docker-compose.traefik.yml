@@ -25,6 +25,9 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      # Standard Traefik setup, but be aware: access to the Docker socket
+      # (even read-only) is equivalent to root on the host if Traefik is ever
+      # compromised. Keep Traefik updated.
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - letsencrypt:/letsencrypt
 
@@ -32,6 +35,10 @@ services:
     build: ../..
     image: taster:latest
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - ../../var:/app/var
     environment:
@@ -41,7 +48,7 @@ services:
       PUBLIC_URL: https://${TASTER_DOMAIN:?Set TASTER_DOMAIN}
       COOKIE_SECURE: "1"
       TRUST_PROXY: "1"
-      SEED_LOCALE: ${SEED_LOCALE:-fr}
+      SEED_LOCALE: ${SEED_LOCALE:-en}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     labels:
       - "traefik.enable=true"

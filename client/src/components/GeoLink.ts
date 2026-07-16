@@ -5,7 +5,9 @@
 // the app itself never calls an external host (no embedded tiles).
 
 import type { GeoPoint } from "@taster/shared";
+import { siGooglemaps, siOpenstreetmap } from "simple-icons";
 import { icon } from "./Icon.js";
+import { brandIcon } from "./BrandIcon.js";
 import { t } from "../i18n/index.js";
 
 export function geoLink(location: GeoPoint): HTMLElement {
@@ -34,7 +36,8 @@ export function geoLink(location: GeoPoint): HTMLElement {
   osm.target = "_blank";
   osm.rel = "noopener noreferrer";
   osm.className = "btn";
-  osm.textContent = t("detail.location.osm");
+  osm.appendChild(brandIcon(siOpenstreetmap, "icon icon-sm"));
+  osm.appendChild(document.createTextNode(t("detail.location.osm")));
   list.appendChild(osm);
 
   const gmaps = document.createElement("a");
@@ -42,7 +45,8 @@ export function geoLink(location: GeoPoint): HTMLElement {
   gmaps.target = "_blank";
   gmaps.rel = "noopener noreferrer";
   gmaps.className = "btn";
-  gmaps.textContent = t("detail.location.gmaps");
+  gmaps.appendChild(brandIcon(siGooglemaps, "icon icon-sm"));
+  gmaps.appendChild(document.createTextNode(t("detail.location.gmaps")));
   list.appendChild(gmaps);
 
   wrap.appendChild(list);

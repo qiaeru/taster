@@ -1,0 +1,48 @@
+{
+  "app": "taster",
+  "version": 1,
+  "categories": [
+    {
+      "slug": "movies",
+      "name": "Movies",
+      "icon": "film",
+      "color": "#e35d6a",
+      "statuses": ["Watched", "Watching", "To watch"]
+    },
+    {
+      "slug": "tv-shows",
+      "name": "TV shows",
+      "icon": "tv",
+      "color": "#8b5cf6",
+      "statuses": ["Watched", "Watching", "To watch"]
+    },
+    {
+      "slug": "video-games",
+      "name": "Video games",
+      "icon": "rocket-launch",
+      "color": "#3b82f6",
+      "statuses": ["Finished", "Playing", "Dropped", "To play"]
+    },
+    {
+      "slug": "restaurants",
+      "name": "Restaurants",
+      "icon": "building-storefront",
+      "color": "#f59e0b",
+      "statuses": ["Tried", "To try"]
+    },
+    {
+      "slug": "books",
+      "name": "Books",
+      "icon": "book-open",
+      "color": "#10b981",
+      "statuses": ["Read", "Reading", "To read"]
+    },
+    {
+      "slug": "music",
+      "name": "Music",
+      "icon": "musical-note",
+      "color": "#ec4899",
+      "statuses": ["Listened", "To listen"]
+    }
+  ]
+}

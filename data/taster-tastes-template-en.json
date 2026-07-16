@@ -4,7 +4,7 @@
   "tastes": [
     {
       "title": "The City of Mists",
-      "category": "films",
+      "category": "movies",
       "rating": 5,
       "status": "Watched",
       "favorite": true,
@@ -28,7 +28,7 @@
     },
     {
       "title": "Watchers of the North",
-      "category": "series",
+      "category": "tv-shows",
       "rating": 4,
       "status": "Watching",
       "tags": ["Fantasy", "Drama"],
@@ -64,25 +64,26 @@
       ]
     },
     {
-      "title": "Leek and goat cheese tart",
-      "category": "food",
+      "title": "Ramen Koyo",
+      "category": "restaurants",
       "rating": 4,
-      "status": "Tested",
-      "tags": ["Vegetarian", "Oven"],
+      "status": "Tried",
+      "tags": ["Japanese", "Ramen"],
       "date": "2024-11",
+      "location": { "lat": 48.8661, "lng": 2.3522 },
       "sections": [
         {
-          "text": "The perfect Sunday-evening recipe. The secret: pre-cook the leeks in butter **very** gently, 25 minutes minimum."
+          "text": "A tonkotsu broth with rare depth and house-made noodles. Ten counter seats: show up before noon or settle in for a wait."
         }
       ]
     },
     {
       "title": "Louna's Bistro",
-      "category": "food",
+      "category": "restaurants",
       "rating": 5,
-      "status": "Tested",
+      "status": "Tried",
       "favorite": true,
-      "tags": ["Restaurant", "Bistro"],
+      "tags": ["Bistro", "Seasonal menu"],
       "location": { "lat": 45.764, "lng": 4.8357 },
       "sections": [
         {

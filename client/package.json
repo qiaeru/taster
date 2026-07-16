@@ -11,12 +11,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource-variable/fraunces": "^5.2.9",
-    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/hanken-grotesk": "^5.2.8",
+    "@fontsource/young-serif": "^5.2.7",
     "@taster/shared": "*",
+    "@zxcvbn-ts/core": "^4.1.2",
+    "@zxcvbn-ts/language-common": "^4.1.2",
+    "@zxcvbn-ts/language-en": "^4.1.1",
+    "@zxcvbn-ts/language-fr": "^4.1.1",
     "dompurify": "^3.4.12",
     "heroicons": "^2.2.0",
-    "marked": "^18.0.6"
+    "marked": "^18.0.6",
+    "simple-icons": "^16.26.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",

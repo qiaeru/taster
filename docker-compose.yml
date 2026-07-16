@@ -7,7 +7,15 @@ services:
     image: taster:latest
     container_name: taster
     restart: unless-stopped
+    # The app drops all capabilities; nothing in it needs privileges.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
+      # Reachable from the whole LAN. On an internet-facing host where TLS is
+      # terminated by a proxy on the same machine, bind localhost only:
+      # "127.0.0.1:3000:3000".
       - "3000:3000"
     volumes:
       # SQLite database and normalized images. Back this folder up.
@@ -25,7 +33,7 @@ services:
       # Set to 1 behind a reverse proxy (Caddy, nginx, Traefik).
       TRUST_PROXY: ${TRUST_PROXY:-0}
       # Locale of the first-boot categories and statuses: fr or en.
-      SEED_LOCALE: ${SEED_LOCALE:-fr}
+      SEED_LOCALE: ${SEED_LOCALE:-en}
       # Set to 1 once to reset the admin to taster/changeme, then remove it.
       ADMIN_RESET: ${ADMIN_RESET:-0}
       LOG_LEVEL: ${LOG_LEVEL:-info}

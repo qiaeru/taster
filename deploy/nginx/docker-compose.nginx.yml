@@ -10,6 +10,10 @@ services:
     build: ../..
     image: taster:latest
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     expose:
       - "3000"
     volumes:
@@ -21,7 +25,7 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-}
       COOKIE_SECURE: "1"
       TRUST_PROXY: "1"
-      SEED_LOCALE: ${SEED_LOCALE:-fr}
+      SEED_LOCALE: ${SEED_LOCALE:-en}
       LOG_LEVEL: ${LOG_LEVEL:-info}
 
   nginx:

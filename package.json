@@ -2,7 +2,7 @@
   "name": "taster",
   "version": "0.1.0",
   "private": true,
-  "description": "Self-hosted showcase of your personal tastes: rate, tag and review films, series, video games, recipes and more, and share them as a beautiful filterable list.",
+  "description": "A self-hosted showcase of your personal tastes. Rate, tag and review movies, TV shows, video games, restaurants and more, and share them as a beautiful filterable list.",
   "license": "MIT",
   "author": "qiaeru",
   "repository": {
@@ -23,6 +23,7 @@
     "dev": "concurrently -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w shared && npm run build -w client && npm run build -w server",
     "start": "node server/dist/index.js",
+    "clean": "node scripts/clean.mjs",
     "typecheck": "tsc -b shared server client",
     "lint": "eslint \"{shared,server,client}/src/**/*.ts\"",
     "format": "prettier --write \"{shared,server,client}/src/**/*.{ts,css,json,md}\" \"*.md\""

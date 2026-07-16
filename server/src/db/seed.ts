@@ -23,20 +23,20 @@ interface SeedCategory {
 
 const SEED_CATEGORIES: SeedCategory[] = [
   {
-    slug: "films",
+    slug: "movies",
     icon: "film",
     color: "#e35d6a",
-    name: { fr: "Films", en: "Films" },
+    name: { fr: "Films", en: "Movies" },
     statuses: {
       fr: ["Vu", "En cours", "À voir"],
       en: ["Watched", "Watching", "To watch"],
     },
   },
   {
-    slug: "series",
+    slug: "tv-shows",
     icon: "tv",
     color: "#8b5cf6",
-    name: { fr: "Séries", en: "Series" },
+    name: { fr: "Séries", en: "TV shows" },
     statuses: {
       fr: ["Vu", "En cours", "À voir"],
       en: ["Watched", "Watching", "To watch"],
@@ -44,7 +44,7 @@ const SEED_CATEGORIES: SeedCategory[] = [
   },
   {
     slug: "video-games",
-    icon: "puzzle-piece",
+    icon: "rocket-launch",
     color: "#3b82f6",
     name: { fr: "Jeux vidéo", en: "Video games" },
     statuses: {
@@ -53,13 +53,13 @@ const SEED_CATEGORIES: SeedCategory[] = [
     },
   },
   {
-    slug: "food",
-    icon: "cake",
+    slug: "restaurants",
+    icon: "building-storefront",
     color: "#f59e0b",
-    name: { fr: "Cuisine", en: "Food" },
+    name: { fr: "Restaurants", en: "Restaurants" },
     statuses: {
       fr: ["Testé", "À tester"],
-      en: ["Tested", "To test"],
+      en: ["Tried", "To try"],
     },
   },
   {
@@ -95,7 +95,7 @@ export function seededLocale(): string {
   const row = db.prepare("SELECT value FROM settings WHERE key = 'seed_locale'").get() as
     | { value: string }
     | undefined;
-  return row?.value === "en" ? "en" : "fr";
+  return row?.value === "fr" ? "fr" : "en";
 }
 
 const DEFAULT_ADMIN_USERNAME = "taster";
@@ -103,7 +103,8 @@ const DEFAULT_ADMIN_PASSWORD = "changeme";
 
 export async function runSeed(logger?: MinimalLogger): Promise<void> {
   const db = getDb();
-  const locale = config.seedLocale === "en" ? "en" : "fr";
+  // English unless SEED_LOCALE=fr: the app ships to an international audience.
+  const locale = config.seedLocale === "fr" ? "fr" : "en";
 
   const hasCategories =
     (db.prepare("SELECT COUNT(*) AS n FROM categories").get() as { n: number }).n > 0;

@@ -30,11 +30,17 @@ function int(name: string, defaultValue: number): number {
 
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-// Mandatory in production; a throwaway default in dev so `npm run dev` just works.
+// The throwaway key is public (it ships in the repo), so anyone could forge an
+// admin cookie with it. Allow it only under `npm run dev` (npm exposes the
+// running script name); `npm start` or a bare `node dist/index.js` without a
+// real SESSION_SECRET must fail loudly instead of serving with the public key.
+const isDevRun = process.env.npm_lifecycle_event === "dev";
 const SESSION_SECRET =
-  NODE_ENV === "production"
-    ? required("SESSION_SECRET")
-    : process.env.SESSION_SECRET || "dev-secret-change-me-0123456789abcdef0123456789abcdef";
+  process.env.SESSION_SECRET && process.env.SESSION_SECRET.trim() !== ""
+    ? process.env.SESSION_SECRET
+    : isDevRun && NODE_ENV !== "production"
+      ? "dev-secret-change-me-0123456789abcdef0123456789abcdef"
+      : required("SESSION_SECRET");
 
 // @fastify/secure-session requires an exactly 32-byte key. Truncate in bytes,
 // not characters: a multi-byte (accented) character inside the first 32

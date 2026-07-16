@@ -6,6 +6,7 @@
 import type { Category, Status, TasteSummary } from "@taster/shared";
 import { thumbUrl } from "../api.js";
 import { icon } from "./Icon.js";
+import { tip } from "./Tooltip.js";
 import { starDisplay } from "./StarRating.js";
 import { t } from "../i18n/index.js";
 
@@ -47,7 +48,10 @@ function media(taste: TasteSummary, category: Category | undefined): HTMLElement
   if (taste.favorite) {
     const heart = document.createElement("span");
     heart.className = "card-heart";
-    heart.title = t("card.favorite");
+    heart.setAttribute("aria-label", t("card.favorite"));
+    // Downward, right-aligned: the card clips overflow and the badge sits in
+    // its top-right corner.
+    tip(heart, t("card.favorite"), "bottom", "end");
     heart.appendChild(icon("heart-solid-20", "icon icon-sm"));
     wrap.appendChild(heart);
   }
@@ -144,7 +148,9 @@ export function tasteRow(taste: TasteSummary, ctx: CardContext): HTMLElement {
   if (taste.favorite) {
     const heart = document.createElement("span");
     heart.className = "row-heart";
-    heart.title = t("card.favorite");
+    // No tooltip here: the row title clips overflow and would swallow the
+    // bubble; the label still reaches assistive tech.
+    heart.setAttribute("aria-label", t("card.favorite"));
     heart.appendChild(icon("heart-solid-20", "icon icon-sm"));
     title.appendChild(heart);
   }

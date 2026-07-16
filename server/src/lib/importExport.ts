@@ -6,15 +6,20 @@
 // valid entries. Format documented in docs/json-import.md.
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import type {
+  CategoriesFile,
+  CategoriesImportItemError,
+  CategoriesImportResult,
+  ImportCategory,
   ImportFile,
   ImportItemError,
   ImportResult,
   ImportTaste,
   TasteInput,
 } from "@taster/shared";
-import { getDb } from "../db/index.js";
+import { getDb, bumpDataRevision, transaction } from "../db/index.js";
+import { uniqueSlug } from "../routes/admin-categories.js";
 import { getTasteDetail } from "./tastes.js";
 import {
   validateTasteInput,
@@ -64,7 +69,9 @@ function orderedTaste(id: string, withImage: boolean): ImportTaste | null {
   if (detail.links.length) out.links = detail.links;
   if (withImage && detail.imageFile) {
     try {
-      const buf = readFileSync(resolve(config.uploadsDir, detail.imageFile));
+      // basename() mirrors deleteImageFiles: the column only ever holds
+      // server-minted names, but keep the invariant local.
+      const buf = readFileSync(resolve(config.uploadsDir, basename(detail.imageFile)));
       out.image = { mime: "image/webp", base64: buf.toString("base64") };
     } catch {
       /* image missing on disk: omit */
@@ -122,7 +129,7 @@ async function decodeImportImage(image: ImportTaste["image"]): Promise<string | 
     typeof image !== "object" ||
     typeof image.base64 !== "string" ||
     typeof image.mime !== "string" ||
-    !["image/jpeg", "image/png", "image/webp"].includes(image.mime)
+    !["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"].includes(image.mime)
   ) {
     throw new ImageValidationError("INVALID_IMAGE");
   }
@@ -235,5 +242,156 @@ export async function importTastes(payload: unknown): Promise<ImportResult> {
       }
     }
   }
+  return { imported, updated, errors };
+}
+
+// ---- categories file ----
+
+export function exportCategories(): string {
+  const db = getDb();
+  const categories = db
+    .prepare("SELECT id, slug, name, icon, color FROM categories ORDER BY sort_order, id")
+    .all() as { id: number; slug: string; name: string; icon: string; color: string }[];
+  const statusStmt = db.prepare(
+    "SELECT name FROM statuses WHERE category_id = ? ORDER BY sort_order, id"
+  );
+  const file: CategoriesFile = {
+    app: "taster",
+    version: 1,
+    categories: categories.map((c) => ({
+      slug: c.slug,
+      name: c.name,
+      icon: c.icon,
+      color: c.color,
+      statuses: (statusStmt.all(c.id) as { name: string }[]).map((s) => s.name),
+    })),
+  };
+  return JSON.stringify(file, null, 2) + "\n";
+}
+
+/**
+ * Replaces a category's status list with `names` (in order). Statuses whose
+ * name already exists keep their id, so tastes referencing them are untouched;
+ * removed statuses null out referencing tastes via the FK.
+ */
+function replaceStatuses(categoryId: number, names: string[]): void {
+  const db = getDb();
+  const existing = db
+    .prepare("SELECT id, name FROM statuses WHERE category_id = ?")
+    .all(categoryId) as { id: number; name: string }[];
+  const byLowerName = new Map(existing.map((s) => [s.name.toLowerCase(), s.id]));
+  const keptIds = names
+    .map((name) => byLowerName.get(name.toLowerCase()))
+    .filter((id): id is number => id !== undefined);
+
+  // Delete first (before inserts, so new rows survive the NOT IN clause).
+  if (keptIds.length) {
+    db.prepare(
+      `DELETE FROM statuses WHERE category_id = ? AND id NOT IN (${keptIds.map(() => "?").join(",")})`
+    ).run(categoryId, ...keptIds);
+  } else {
+    db.prepare("DELETE FROM statuses WHERE category_id = ?").run(categoryId);
+  }
+
+  const update = db.prepare("UPDATE statuses SET name = ?, sort_order = ? WHERE id = ?");
+  const insert = db.prepare(
+    "INSERT INTO statuses (category_id, name, sort_order) VALUES (?, ?, ?)"
+  );
+  names.forEach((name, i) => {
+    const match = byLowerName.get(name.toLowerCase());
+    if (match !== undefined) update.run(name, i, match);
+    else insert.run(categoryId, name, i);
+  });
+}
+
+export function importCategories(payload: unknown): CategoriesImportResult {
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    (payload as CategoriesFile).app !== "taster" ||
+    (payload as CategoriesFile).version !== 1 ||
+    !Array.isArray((payload as CategoriesFile).categories)
+  ) {
+    throw new ImportFormatError("INVALID_FILE");
+  }
+  const file = payload as CategoriesFile;
+  const db = getDb();
+
+  let imported = 0;
+  let updated = 0;
+  const errors: CategoriesImportItemError[] = [];
+
+  transaction(() => {
+    file.categories.forEach((item: ImportCategory, index: number) => {
+      const name = typeof item?.name === "string" ? item.name.trim() : "";
+      if (!name || name.length > 100) {
+        errors.push({ index, code: "NAME_REQUIRED" });
+        return;
+      }
+      const icon = typeof item.icon === "string" && item.icon.length <= 50 ? item.icon : "tag";
+      const color =
+        typeof item.color === "string" && /^#[0-9a-fA-F]{6}$/.test(item.color)
+          ? item.color
+          : "#8b5cf6";
+      let statuses: string[] | null = null;
+      if (item.statuses !== undefined) {
+        if (
+          !Array.isArray(item.statuses) ||
+          item.statuses.length > 30 ||
+          item.statuses.some(
+            (s) => typeof s !== "string" || !s.trim() || s.length > 100
+          )
+        ) {
+          errors.push({ index, code: "INVALID_STATUSES" });
+          return;
+        }
+        statuses = item.statuses.map((s) => s.trim());
+        // Duplicate names (statuses are unique per category, case-insensitive)
+        // would hit the UNIQUE constraint and abort the whole import with a
+        // 500; degrade to a per-item error instead.
+        if (new Set(statuses.map((s) => s.toLowerCase())).size !== statuses.length) {
+          errors.push({ index, code: "INVALID_STATUSES" });
+          return;
+        }
+      }
+
+      const slug = typeof item.slug === "string" ? item.slug.trim() : "";
+      const existing = (
+        slug
+          ? db.prepare("SELECT id FROM categories WHERE slug = ?").get(slug)
+          : db.prepare("SELECT id FROM categories WHERE name = ? COLLATE NOCASE").get(name)
+      ) as { id: number } | undefined;
+
+      if (existing) {
+        db.prepare(
+          "UPDATE categories SET name = ?, icon = ?, color = ?, updated_at = datetime('now') WHERE id = ?"
+        ).run(name, icon, color, existing.id);
+        if (statuses) replaceStatuses(existing.id, statuses);
+        updated++;
+      } else {
+        const maxOrder = (
+          db.prepare("SELECT COALESCE(MAX(sort_order), -1) AS m FROM categories").get() as {
+            m: number;
+          }
+        ).m;
+        // A provided slug is honored when well-formed and free; anything else
+        // falls back to a slug derived from the name.
+        const finalSlug =
+          slug && /^[a-z0-9-]{1,100}$/.test(slug) &&
+          !db.prepare("SELECT 1 FROM categories WHERE slug = ?").get(slug)
+            ? slug
+            : uniqueSlug(name);
+        const info = db
+          .prepare(
+            "INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)"
+          )
+          .run(finalSlug, name, icon, color, maxOrder + 1);
+        if (statuses) replaceStatuses(Number(info.lastInsertRowid), statuses);
+        imported++;
+      }
+    });
+    bumpDataRevision();
+  })();
+
   return { imported, updated, errors };
 }

@@ -6,6 +6,7 @@
 
 import type { Rating } from "@taster/shared";
 import { icon } from "./Icon.js";
+import { tip } from "./Tooltip.js";
 import { t } from "../i18n/index.js";
 
 export function starDisplay(rating: Rating | null, size: "sm" | "md" = "md"): HTMLElement {
@@ -17,7 +18,7 @@ export function starDisplay(rating: Rating | null, size: "sm" | "md" = "md"): HT
       "aria-label",
       t("rating.aria", { rating, label: t(`rating.${rating}`) })
     );
-    wrap.title = t(`rating.${rating}`);
+    tip(wrap, t(`rating.${rating}`));
   } else {
     wrap.setAttribute("aria-label", t("rating.none"));
   }
@@ -31,7 +32,6 @@ export function starDisplay(rating: Rating | null, size: "sm" | "md" = "md"): HT
 export interface StarInput {
   el: HTMLElement;
   get(): Rating | null;
-  set(value: Rating | null): void;
 }
 
 let starInputSeq = 0;
@@ -78,7 +78,7 @@ export function starInput(initial: Rating | null, label: string): StarInput {
     const lab = document.createElement("label");
     lab.htmlFor = id;
     lab.className = "star-label";
-    lab.title = t(`rating.${rating}`);
+    tip(lab, t(`rating.${rating}`));
     lab.setAttribute("aria-label", `${i}/5 (${t(`rating.${rating}`)})`);
     group.appendChild(input);
     group.appendChild(lab);
@@ -99,9 +99,5 @@ export function starInput(initial: Rating | null, label: string): StarInput {
   return {
     el: wrap,
     get: () => value,
-    set: (next) => {
-      value = next;
-      paint();
-    },
   };
 }

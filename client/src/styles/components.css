@@ -110,6 +110,70 @@
     padding: 0.35rem 0.5rem;
     font-size: 0.85rem;
   }
+
+  /* Custom select (components/Select.ts): button + themed popup listbox. */
+  .select-menu {
+    position: relative;
+  }
+  .select-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    text-align: left;
+  }
+  .select-toggle:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .select-chevron {
+    color: var(--fg-muted);
+    transition: rotate 0.15s ease;
+  }
+  .select-toggle[aria-expanded="true"] .select-chevron {
+    rotate: 180deg;
+  }
+  .select-panel {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    min-width: 100%;
+    max-height: 16rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 0.625rem;
+    box-shadow: var(--shadow-card-hover);
+    z-index: 50;
+    list-style: none;
+    scrollbar-width: thin;
+  }
+  .select-panel li {
+    display: block;
+    width: 100%;
+  }
+  .select-option {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.4rem;
+    font-size: 0.9rem;
+    color: var(--fg);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .select-option:hover,
+  .select-option:focus-visible {
+    background: var(--bg-sunken);
+  }
+  .select-option[data-active="true"] {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    font-weight: 600;
+  }
   .textarea {
     width: 100%;
     min-height: 8rem;
@@ -130,6 +194,18 @@
     color: var(--fg-muted);
     border: 1px solid transparent;
     white-space: nowrap;
+  }
+  .chip-count {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--fg-muted) 14%, transparent);
+    color: var(--fg-muted);
+  }
+  .chip-toggle[data-active="true"] .chip-count {
+    background: color-mix(in srgb, var(--accent-contrast) 22%, transparent);
+    color: inherit;
   }
   .chip-status {
     background: var(--accent-soft);
@@ -164,6 +240,47 @@
   }
   .chip-fav[data-active="true"] .icon {
     color: var(--accent-contrast);
+  }
+
+  /* ---- tooltips (see components/Tooltip.ts) ---- */
+  [data-tip] {
+    position: relative;
+  }
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.4rem);
+    translate: -50% 0;
+    padding: 0.3rem 0.65rem;
+    border-radius: 0.5rem;
+    background: var(--fg);
+    color: var(--bg);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 60;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+  }
+  [data-tip]:hover::after,
+  [data-tip]:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0.35s;
+  }
+  [data-tip-pos="bottom"]::after {
+    bottom: auto;
+    top: calc(100% + 0.4rem);
+  }
+  [data-tip-align="end"]::after {
+    left: auto;
+    right: 0;
+    translate: 0 0;
   }
 
   .error-box {
@@ -206,11 +323,15 @@
     width: 2.1rem;
     height: 2.1rem;
     display: block;
+    /* Optical alignment with the wordmark: the text's visual center sits
+       above its line-box center (descender space), so the star follows. */
+    translate: 0 -1.5px;
   }
   .brand-name {
     font-family: var(--font-display);
     font-size: 1.5rem;
-    font-weight: 650;
+    /* Young Serif ships a single 400 weight; heavier values would synthesize. */
+    font-weight: 400;
     letter-spacing: 0.01em;
   }
   .header-actions {
@@ -218,9 +339,49 @@
     align-items: center;
     gap: 0.25rem;
   }
-  .locale-btn span {
-    font-size: 0.75rem;
-    font-weight: 700;
+  .locale-picker {
+    position: relative;
+  }
+  .locale-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 11rem;
+    padding: 0.25rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 0.625rem;
+    box-shadow: var(--shadow-card-hover);
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    list-style: none;
+  }
+  .locale-menu li {
+    /* Full-width list items keep each button's hit target full width. */
+    display: block;
+    width: 100%;
+  }
+  .locale-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem;
+    font-size: 0.9rem;
+    color: var(--fg);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+  }
+  .locale-menu-item:hover {
+    background: var(--bg-sunken);
+  }
+  .locale-menu-item[data-active="true"] {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    font-weight: 600;
   }
   .admin-link {
     opacity: 0.55;
@@ -237,9 +398,49 @@
     gap: 0.5rem;
     margin-bottom: 0.9rem;
   }
+  /* On larger screens the toolbar follows the scroll; on phones it wraps over
+     several rows and would eat too much of the viewport. */
+  @media (min-width: 720px) {
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: var(--bg);
+      padding: 0.6rem 0;
+    }
+  }
+  /* One height for every toolbar control (search, sort, views, random). */
+  .toolbar .search input,
+  .toolbar .select,
+  .toolbar .view-switch,
+  .toolbar > .icon-btn {
+    height: 2.75rem;
+  }
+  .toolbar .view-switch,
+  .toolbar > .icon-btn {
+    align-items: center;
+  }
   .search {
     position: relative;
     flex: 1 1 14rem;
+  }
+  /* The sort select carries an arrows icon (same recipe as the search field)
+     so it reads as sorting, not filtering. */
+  .sort-wrap {
+    position: relative;
+  }
+  .sort-icon {
+    position: absolute;
+    left: 0.7rem;
+    top: 50%;
+    translate: 0 -50%;
+    color: var(--fg-muted);
+    pointer-events: none;
+    /* Above the custom select's toggle, itself a positioned opaque button. */
+    z-index: 1;
+  }
+  .sort-wrap .select {
+    padding-left: 2.4rem;
   }
   .search-icon {
     position: absolute;
@@ -267,6 +468,31 @@
   .view-btn[data-active="true"] {
     background: var(--bg-elev);
     color: var(--accent);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Die roll on the random pick. */
+  .die-roll {
+    animation: die-roll 0.4s ease;
+  }
+  @keyframes die-roll {
+    50% {
+      rotate: 180deg;
+      scale: 0.8;
+    }
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  /* Floating back-to-top on long lists. */
+  .to-top {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 40;
+    background: var(--bg-elev);
+    border-color: var(--border);
     box-shadow: var(--shadow-card);
   }
 
@@ -500,6 +726,9 @@
   }
   .row-right {
     flex: none;
+    display: flex;
+    align-items: center;
+    align-self: center;
   }
 
   /* ---- tier list ---- */
@@ -512,7 +741,7 @@
     gap: 0.6rem;
     font-family: var(--font-display);
     font-size: 1.15rem;
-    font-weight: 650;
+    font-weight: 400;
     margin-bottom: 0.7rem;
     padding-bottom: 0.4rem;
     border-bottom: 1px solid var(--border);
@@ -530,7 +759,7 @@
   .page-title {
     font-family: var(--font-display);
     font-size: 1.8rem;
-    font-weight: 680;
+    font-weight: 400;
     margin: 0.5rem 0 1.25rem;
   }
   .back-link {
@@ -541,6 +770,21 @@
     text-decoration: none;
     font-size: 0.875rem;
     margin-bottom: 1rem;
+  }
+  /* Back link on the left, prev/next arrows on the right. */
+  .detail-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .detail-nav .back-link {
+    margin-bottom: 0;
+  }
+  .detail-nav-arrows {
+    display: flex;
+    gap: 0.25rem;
   }
   .back-link:hover {
     color: var(--fg);
@@ -585,7 +829,7 @@
   .detail-title {
     font-family: var(--font-display);
     font-size: 2rem;
-    font-weight: 700;
+    font-weight: 400;
     line-height: 1.15;
   }
   .detail-heart {
@@ -617,7 +861,7 @@
     gap: 0.4rem;
     font-family: var(--font-display);
     font-size: 1.2rem;
-    font-weight: 650;
+    font-weight: 400;
   }
   .external-review {
     margin-bottom: 1.5rem;
@@ -743,11 +987,18 @@
     border-radius: 0.85rem;
     background: var(--bg-elev);
     border: 1px solid var(--border);
+    /* Tiles link to the list (all, favorites, rated). */
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+  .stat-tile:hover {
+    border-color: var(--accent);
   }
   .stat-value {
     font-family: var(--font-display);
     font-size: 1.8rem;
-    font-weight: 700;
+    font-weight: 400;
   }
   .stat-label {
     font-size: 0.8rem;
@@ -766,6 +1017,16 @@
     grid-template-columns: minmax(7rem, 12rem) 1fr 2.5rem;
     align-items: center;
     gap: 0.7rem;
+    /* Rows are links to the filtered list; keep them looking like rows. */
+    color: inherit;
+    text-decoration: none;
+    border-radius: 0.4rem;
+  }
+  .bar-row:hover .bar-label {
+    color: var(--accent);
+  }
+  .bar-row:hover .bar-fill {
+    filter: brightness(1.1);
   }
   .bar-label {
     font-size: 0.85rem;
@@ -830,6 +1091,35 @@
       translate: 0 0.5rem;
     }
   }
+  .lightbox {
+    border: none;
+    padding: 0;
+    background: transparent;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+  }
+  .lightbox img {
+    display: block;
+    max-width: min(92vw, 72rem);
+    max-height: 90vh;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-card-hover);
+    cursor: zoom-out;
+  }
+  .lightbox::backdrop {
+    background: rgb(0 0 0 / 0.75);
+  }
+  /* The zoom button wraps the detail image without altering its layout. */
+  .media-zoom {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: zoom-in;
+  }
+
   .confirm-dialog {
     border: 1px solid var(--border);
     border-radius: 1rem;
@@ -865,6 +1155,11 @@
   .field-label {
     font-size: 0.85rem;
     font-weight: 600;
+  }
+  /* A label tied to a custom select focuses it on click, like a native one. */
+  .field-label-clickable {
+    cursor: pointer;
+    width: fit-content;
   }
   .field-hint {
     font-size: 0.78rem;
@@ -990,10 +1285,16 @@
     place-items: center;
     overflow: hidden;
   }
+  .image-preview[data-drop="true"] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
   .image-preview img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    /* contain, not cover: the admin needs to see the whole uploaded image,
+       not the 3:2 crop the cards apply. */
+    object-fit: contain;
   }
   .image-preview img[hidden],
   .image-preview span[hidden] {
@@ -1132,9 +1433,6 @@
   .admin-updated {
     font-size: 0.75rem;
   }
-  .admin-logout {
-    margin-top: 2rem;
-  }
 
   .category-list {
     display: grid;
@@ -1157,12 +1455,20 @@
     align-items: center;
     flex-wrap: wrap;
   }
+  /* Name field, icon picker and color swatch share one control height. */
   .category-head .input {
     flex: 1 1 8rem;
+    height: 2.6rem;
+  }
+  /* Icon picker + color swatch travel together when the row wraps. */
+  .category-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   .color-input {
     width: 2.6rem;
-    height: 2.3rem;
+    height: 2.6rem;
     padding: 0.15rem;
     border-radius: 0.5rem;
     border: 1px solid var(--border);
@@ -1185,6 +1491,9 @@
   .category-card .dialog-actions {
     justify-content: flex-start;
   }
+  .category-new {
+    margin-bottom: 1.5rem;
+  }
 
   /* ---- import/export ---- */
   .io-section {
@@ -1193,6 +1502,11 @@
     align-items: flex-start;
     gap: 0.6rem;
     margin-bottom: 2rem;
+  }
+  .io-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   .io-result {
     width: 100%;
@@ -1211,6 +1525,54 @@
     font-size: 0.85rem;
   }
 
+  /* ---- loading skeletons ---- */
+  .skeleton-card {
+    border-radius: 1rem;
+    overflow: hidden;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+  }
+  .skeleton-block {
+    background: linear-gradient(
+      90deg,
+      var(--bg-sunken) 25%,
+      color-mix(in srgb, var(--fg-muted) 12%, var(--bg-sunken)) 50%,
+      var(--bg-sunken) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+  .skeleton-media {
+    aspect-ratio: 3 / 2;
+  }
+  .skeleton-line {
+    height: 0.8rem;
+    border-radius: 999px;
+    margin: 0.9rem;
+  }
+  .skeleton-line-short {
+    width: 55%;
+    margin-top: 0;
+  }
+  @keyframes skeleton-shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-block {
+      animation: none;
+    }
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none !important;
+    }
+  }
+
   /* ---- empty state ---- */
   .empty-state {
     text-align: center;
@@ -1220,5 +1582,199 @@
     font-family: var(--font-display);
     font-size: 1.4rem;
     margin-bottom: 0.5rem;
+  }
+  .empty-reset {
+    margin-top: 1.25rem;
+  }
+
+  /* ---- admin tab bar extras ---- */
+  .tab-logout {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  /* ---- icon picker ---- */
+  .icon-picker {
+    position: relative;
+  }
+  .icon-picker-toggle {
+    gap: 0.2rem;
+    padding: 0.45rem 0.6rem;
+    height: 2.6rem;
+  }
+  .icon-picker-panel {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    width: 19rem;
+    max-width: min(19rem, calc(100vw - 2rem));
+    padding: 0.6rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 0.625rem;
+    box-shadow: var(--shadow-card-hover);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  /* Flip helpers: JS measures the open panel and pins it to the right edge
+     or above the toggle when it would overflow the viewport. */
+  .icon-picker-panel[data-align="right"] {
+    left: auto;
+    right: 0;
+  }
+  .icon-picker-panel[data-open="up"] {
+    top: auto;
+    bottom: calc(100% + 4px);
+  }
+  .icon-picker-panel .input {
+    /* .category-head .input sets flex-basis 8rem, which becomes a height in
+       this column layout; reset to a normal field. */
+    flex: none;
+    width: 100%;
+  }
+  .icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(2.4rem, 1fr));
+    gap: 0.15rem;
+    max-height: 14rem;
+    overflow-y: auto;
+  }
+  .icon-picker-item {
+    display: grid;
+    place-items: center;
+    padding: 0.45rem;
+    border-radius: 0.5rem;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .icon-picker-item:hover {
+    background: var(--bg-sunken);
+    color: var(--fg);
+  }
+  .icon-picker-item[data-active="true"] {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .input-invalid {
+    border-color: var(--danger);
+  }
+
+  /* ---- password strength meter ---- */
+  .pw-strength {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .pw-strength-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--bg-sunken);
+    overflow: hidden;
+  }
+  .pw-strength-fill {
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: var(--danger);
+    transition: width 0.2s ease, background-color 0.2s ease;
+  }
+  .pw-strength-fill[data-score="1"] {
+    background: #ff9a44;
+  }
+  .pw-strength-fill[data-score="2"] {
+    background: #ffce4d;
+  }
+  .pw-strength-fill[data-score="3"] {
+    background: #6bd38a;
+  }
+  .pw-strength-fill[data-score="4"] {
+    background: var(--success);
+  }
+  .pw-strength-label {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    min-height: 1em;
+  }
+  .pw-strength-rules {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.15rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    padding: 0;
+  }
+  .pw-strength-rules li::before {
+    content: "·";
+    margin-right: 0.35rem;
+  }
+  .pw-strength-rules li.ok {
+    color: var(--success);
+  }
+  .pw-strength-rules li.ok::before {
+    content: "✓";
+  }
+
+  /* ---- attribution footer ---- */
+  .site-footer {
+    margin-top: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem 2rem;
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+  }
+  .site-footer-link {
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+  }
+  .site-footer-link:hover {
+    color: var(--fg);
+  }
+  .site-footer-logo {
+    height: 1.35em;
+    width: auto;
+    display: block;
+  }
+  .site-footer-sep {
+    opacity: 0.45;
+  }
+  /* qiae.ru lockup: the head sits on an organic orange blob, mirroring the
+     source site (CSS blob, not part of the SVG). Brand color, kept off the
+     global palette since the footer is its only user. */
+  .qiaeru-logo {
+    position: relative;
+    display: inline-flex;
+    transition: transform 0.2s ease;
+  }
+  .qiaeru-logo:hover {
+    transform: scale(1.08);
+  }
+  .qiaeru-logo::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    z-index: 0;
+    background-color: #bf6242;
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+    transition: background-color 0.3s ease;
+  }
+  :root[data-theme="dark"] .qiaeru-logo::before {
+    background-color: #e3a282;
+  }
+  .qiaeru-logo img {
+    position: relative;
+    z-index: 1;
   }
 }

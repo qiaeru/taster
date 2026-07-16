@@ -1,0 +1,48 @@
+{
+  "app": "taster",
+  "version": 1,
+  "categories": [
+    {
+      "slug": "movies",
+      "name": "Films",
+      "icon": "film",
+      "color": "#e35d6a",
+      "statuses": ["Vu", "En cours", "À voir"]
+    },
+    {
+      "slug": "tv-shows",
+      "name": "Séries",
+      "icon": "tv",
+      "color": "#8b5cf6",
+      "statuses": ["Vu", "En cours", "À voir"]
+    },
+    {
+      "slug": "video-games",
+      "name": "Jeux vidéo",
+      "icon": "rocket-launch",
+      "color": "#3b82f6",
+      "statuses": ["Terminé", "En cours", "Abandonné", "À jouer"]
+    },
+    {
+      "slug": "restaurants",
+      "name": "Restaurants",
+      "icon": "building-storefront",
+      "color": "#f59e0b",
+      "statuses": ["Testé", "À tester"]
+    },
+    {
+      "slug": "books",
+      "name": "Livres",
+      "icon": "book-open",
+      "color": "#10b981",
+      "statuses": ["Lu", "En cours", "À lire"]
+    },
+    {
+      "slug": "music",
+      "name": "Musique",
+      "icon": "musical-note",
+      "color": "#ec4899",
+      "statuses": ["Écouté", "À écouter"]
+    }
+  ]
+}

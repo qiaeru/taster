@@ -79,7 +79,7 @@ const TASTE_PATH = /^\/taste\/([0-9a-f-]{36})(?:\?.*)?$/i;
 export function renderIndexHtml(url: string): string {
   const tpl = getTemplate();
   const defaultDescription =
-    "A self-hosted showcase of personal tastes: films, series, video games, food, books, music and more.";
+    "A self-hosted showcase of personal tastes: movies, TV shows, video games, restaurants, books, music and more.";
 
   const match = TASTE_PATH.exec(url);
   if (match) {
@@ -95,19 +95,19 @@ export function renderIndexHtml(url: string): string {
         imagePath: row.imageFile ? `/uploads/${row.imageFile}` : null,
         urlPath: `/taste/${row.id}`,
       });
+      // Function replacements: a plain string would expand `$&` / `$'`
+      // patterns coming from the taste title into template fragments.
       return tpl
-        .replace("<!--og:head-->", og)
-        .replace("<title>Taster</title>", `<title>${escapeHtml(row.title)} · Taster</title>`);
+        .replace("<!--og:head-->", () => og)
+        .replace("<title>Taster</title>", () => `<title>${escapeHtml(row.title)} · Taster</title>`);
     }
   }
 
-  return tpl.replace(
-    "<!--og:head-->",
-    metaTags({ title: "Taster", description: defaultDescription, imagePath: null, urlPath: "/" })
-  );
-}
-
-// Test hook: forget the cached template (unused in production).
-export function resetTemplateCache(): void {
-  template = null;
+  const og = metaTags({
+    title: "Taster",
+    description: defaultDescription,
+    imagePath: null,
+    urlPath: "/",
+  });
+  return tpl.replace("<!--og:head-->", () => og);
 }

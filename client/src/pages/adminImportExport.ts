@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
-// Import/export tab: JSON file import with per-item error reporting, full
-// export (with or without embedded images) and a downloadable template.
+// Import/export tab: two mirrored sections, one for tastes, one for
+// categories, each with its own import button, export link and result box.
 
-import type { ImportResult } from "@taster/shared";
 import { api, ApiError, invalidateCatalog } from "../api.js";
 import { icon } from "../components/Icon.js";
 import { toast } from "../components/Toaster.js";
 import { t, locale$ } from "../i18n/index.js";
 
-// Kept in sync with docs/json-import.md; localized statuses match the FR
-// seed because the template is a starting point the owner edits anyway.
+// Kept in sync with docs/json-import.md; statuses match the EN seed (the
+// default) because the templates are a starting point the owner edits anyway.
 const TEMPLATE = {
   app: "taster",
   version: 1,
@@ -18,7 +17,7 @@ const TEMPLATE = {
       title: "Chrono Trigger",
       category: "video-games",
       rating: 5,
-      status: "Terminé",
+      status: "Finished",
       favorite: true,
       published: true,
       tags: ["JRPG", "SNES"],
@@ -26,46 +25,53 @@ const TEMPLATE = {
       externalReviewUrl: null,
       sections: [
         {
-          subtitle: "Scénario",
+          subtitle: "Story",
           rating: 5,
-          text: "Du **Markdown**, avec ||un spoiler masqué|| si besoin.",
+          text: "Some **Markdown**, with ||a hidden spoiler|| when needed.",
         },
       ],
-      links: [{ label: "Wikipedia", url: "https://fr.wikipedia.org/wiki/Chrono_Trigger" }],
+      links: [{ label: "Wikipedia", url: "https://en.wikipedia.org/wiki/Chrono_Trigger" }],
     },
   ],
 };
 
-export async function renderImportExportTab(body: HTMLElement): Promise<void> {
-  body.innerHTML = "";
+const TEMPLATE_CATEGORIES = {
+  app: "taster",
+  version: 1,
+  categories: [
+    {
+      slug: "board-games",
+      name: "Board games",
+      icon: "puzzle-piece",
+      color: "#3b82f6",
+      statuses: ["Played", "To play"],
+    },
+  ],
+};
 
-  // ---- import ----
-  const importSection = document.createElement("section");
-  importSection.className = "io-section";
-  const importHead = document.createElement("h3");
-  importHead.className = "detail-subhead";
-  importHead.textContent = t("io.import");
-  const importHint = document.createElement("p");
-  importHint.className = "muted field-hint";
-  importHint.textContent = t("io.import.hint");
-  importSection.append(importHead, importHint);
+interface ImportOutcome {
+  imported: number;
+  updated: number;
+  errors: { index: number; code: string }[];
+}
 
+/** File input + label button wired to an import endpoint and a result box. */
+function importControl(
+  id: string,
+  label: string,
+  endpoint: string,
+  resultBox: HTMLElement
+): HTMLElement[] {
   const fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.accept = "application/json,.json";
   fileInput.className = "sr-only";
-  fileInput.id = "import-file";
+  fileInput.id = id;
   const chooseBtn = document.createElement("label");
   chooseBtn.className = "btn btn-primary";
-  chooseBtn.htmlFor = "import-file";
+  chooseBtn.htmlFor = id;
   chooseBtn.appendChild(icon("document-arrow-up", "icon icon-sm"));
-  chooseBtn.appendChild(document.createTextNode(t("io.import.choose")));
-  importSection.append(fileInput, chooseBtn);
-
-  const resultBox = document.createElement("div");
-  resultBox.className = "io-result";
-  resultBox.hidden = true;
-  importSection.appendChild(resultBox);
+  chooseBtn.appendChild(document.createTextNode(label));
 
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0];
@@ -80,7 +86,7 @@ export async function renderImportExportTab(body: HTMLElement): Promise<void> {
       return;
     }
     try {
-      const result = await api.post<ImportResult>("/api/admin/import", payload);
+      const result = await api.post<ImportOutcome>(endpoint, payload);
       invalidateCatalog();
       resultBox.hidden = false;
       resultBox.innerHTML = "";
@@ -113,50 +119,113 @@ export async function renderImportExportTab(body: HTMLElement): Promise<void> {
     fileInput.value = "";
   });
 
-  body.appendChild(importSection);
+  return [fileInput, chooseBtn];
+}
 
-  // ---- export ----
-  const exportSection = document.createElement("section");
-  exportSection.className = "io-section";
-  const exportHead = document.createElement("h3");
-  exportHead.className = "detail-subhead";
-  exportHead.textContent = t("io.export");
-  exportSection.appendChild(exportHead);
+/** Button that downloads an editable starter file. */
+function templateButton(payload: unknown, baseName: string): HTMLElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn";
+  btn.appendChild(icon("document-arrow-down", "icon icon-sm"));
+  btn.appendChild(document.createTextNode(t("io.template")));
+  btn.addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(payload, null, 2) + "\n"], {
+      type: "application/json",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${baseName}-${locale$.get()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  return btn;
+}
+
+export async function renderImportExportTab(body: HTMLElement): Promise<void> {
+  body.innerHTML = "";
+
+  // ---- tastes ----
+  const tastesSection = document.createElement("section");
+  tastesSection.className = "io-section";
+  const tastesHead = document.createElement("h3");
+  tastesHead.className = "detail-subhead";
+  tastesHead.textContent = t("io.tastes");
+  const tastesHint = document.createElement("p");
+  tastesHint.className = "muted field-hint";
+  tastesHint.textContent = t("io.tastes.hint");
+  tastesSection.append(tastesHead, tastesHint);
+
+  const tastesResult = document.createElement("div");
+  tastesResult.className = "io-result";
+  tastesResult.hidden = true;
+
+  const tastesActions = document.createElement("div");
+  tastesActions.className = "io-actions";
+  tastesActions.append(
+    ...importControl("import-tastes-file", t("io.tastes.import"), "/api/admin/import", tastesResult)
+  );
+
+  const exportBtn = document.createElement("a");
+  exportBtn.className = "btn";
+  exportBtn.href = "/api/admin/export";
+  exportBtn.setAttribute("download", "taster-tastes.json");
+  exportBtn.appendChild(icon("document-arrow-down", "icon icon-sm"));
+  exportBtn.appendChild(document.createTextNode(t("io.tastes.export")));
+  tastesActions.appendChild(exportBtn);
+
+  tastesActions.appendChild(templateButton(TEMPLATE, "taster-tastes-template"));
+  tastesSection.appendChild(tastesActions);
 
   const withImagesLabel = document.createElement("label");
   withImagesLabel.className = "checkbox-label";
   const withImages = document.createElement("input");
   withImages.type = "checkbox";
   withImagesLabel.append(withImages, document.createTextNode(t("io.export.withImages")));
-  exportSection.appendChild(withImagesLabel);
-
-  const exportBtn = document.createElement("a");
-  exportBtn.className = "btn";
-  exportBtn.href = "/api/admin/export";
-  exportBtn.setAttribute("download", "taster-export.json");
-  exportBtn.appendChild(icon("document-arrow-down", "icon icon-sm"));
-  exportBtn.appendChild(document.createTextNode(t("io.export.all")));
   withImages.addEventListener("change", () => {
     exportBtn.href = withImages.checked ? "/api/admin/export?images=1" : "/api/admin/export";
   });
-  exportSection.appendChild(exportBtn);
+  tastesSection.appendChild(withImagesLabel);
 
-  const templateBtn = document.createElement("button");
-  templateBtn.type = "button";
-  templateBtn.className = "btn";
-  templateBtn.appendChild(icon("document-arrow-down", "icon icon-sm"));
-  templateBtn.appendChild(document.createTextNode(t("io.template")));
-  templateBtn.addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(TEMPLATE, null, 2) + "\n"], {
-      type: "application/json",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `taster-template-${locale$.get()}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
-  exportSection.appendChild(templateBtn);
+  tastesSection.appendChild(tastesResult);
+  body.appendChild(tastesSection);
 
-  body.appendChild(exportSection);
+  // ---- categories ----
+  const catSection = document.createElement("section");
+  catSection.className = "io-section";
+  const catHead = document.createElement("h3");
+  catHead.className = "detail-subhead";
+  catHead.textContent = t("io.categories");
+  const catHint = document.createElement("p");
+  catHint.className = "muted field-hint";
+  catHint.textContent = t("io.categories.hint");
+  catSection.append(catHead, catHint);
+
+  const catResult = document.createElement("div");
+  catResult.className = "io-result";
+  catResult.hidden = true;
+
+  const catActions = document.createElement("div");
+  catActions.className = "io-actions";
+  catActions.append(
+    ...importControl(
+      "import-categories-file",
+      t("io.categories.import"),
+      "/api/admin/import/categories",
+      catResult
+    )
+  );
+
+  const catExportBtn = document.createElement("a");
+  catExportBtn.className = "btn";
+  catExportBtn.href = "/api/admin/export/categories";
+  catExportBtn.setAttribute("download", "taster-categories.json");
+  catExportBtn.appendChild(icon("document-arrow-down", "icon icon-sm"));
+  catExportBtn.appendChild(document.createTextNode(t("io.categories.export")));
+  catActions.appendChild(catExportBtn);
+  catActions.appendChild(templateButton(TEMPLATE_CATEGORIES, "taster-categories-template"));
+  catSection.appendChild(catActions);
+
+  catSection.appendChild(catResult);
+  body.appendChild(catSection);
 }

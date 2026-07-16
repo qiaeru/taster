@@ -8,14 +8,17 @@ import type { Category, TasteDetail, TasteInput } from "@taster/shared";
 import { adminApi, authApi, publicApi, api, ApiError, invalidateCatalog, displayUrl } from "../api.js";
 import { renderHeader } from "../components/Header.js";
 import { icon } from "../components/Icon.js";
+import { selectMenu } from "../components/Select.js";
+import { tip } from "../components/Tooltip.js";
 import { starInput } from "../components/StarRating.js";
 import { tagInput } from "../components/TagInput.js";
 import { datePrecisionPicker } from "../components/DatePrecisionPicker.js";
 import { sectionEditor } from "../components/SectionEditor.js";
 import { toast } from "../components/Toaster.js";
+import { confirmDialog } from "../components/ConfirmDialog.js";
 import { t } from "../i18n/index.js";
 import { resizeForUpload } from "../lib/imageResize.js";
-import { navigate } from "../router.js";
+import { navigate, setNavGuard } from "../router.js";
 
 function field(labelText: string, input: HTMLElement, hint?: string): HTMLElement {
   const wrap = document.createElement("div");
@@ -31,6 +34,18 @@ function field(labelText: string, input: HTMLElement, hint?: string): HTMLElemen
     const id = `f-${Math.random().toString(36).slice(2, 8)}`;
     input.id = id;
     label.htmlFor = id;
+  } else {
+    // Custom control (selectMenu): a <button> is not labelable via `for`, so
+    // associate it for assistive tech with aria-labelledby and focus it when
+    // the visible label is clicked, restoring the native <label> behavior.
+    const toggle = input.querySelector<HTMLButtonElement>(".select-toggle");
+    if (toggle) {
+      const id = `f-${Math.random().toString(36).slice(2, 8)}`;
+      label.id = id;
+      toggle.setAttribute("aria-labelledby", id);
+      label.classList.add("field-label-clickable");
+      label.addEventListener("click", () => toggle.focus());
+    }
   }
   wrap.append(label, input);
   if (hint) {
@@ -65,8 +80,12 @@ export function renderTasteForm(
   root: HTMLElement,
   _params: URLSearchParams,
   segments: string[]
-): void {
+): () => void {
   const editId = segments[0] && segments[0] !== "new" ? segments[0] : null;
+  let cleanup: (() => void) | null = null;
+  // The form loads its data asynchronously; the router may tear the page down
+  // before that resolves. `disposed` lets the late setup remove itself.
+  let disposed = false;
 
   root.appendChild(renderHeader());
   const main = document.createElement("main");
@@ -85,6 +104,7 @@ export function renderTasteForm(
       publicApi.tags().catch(() => [] as { id: number; name: string }[]),
       editId ? publicApi.tasteDetail(editId).catch(() => null) : Promise.resolve(null),
     ]);
+    if (disposed) return;
     if (editId && !detail) {
       const err = document.createElement("p");
       err.className = "error-box";
@@ -114,37 +134,33 @@ export function renderTasteForm(
     form.appendChild(field(t("form.title"), title));
 
     // Category + status (status options follow the category)
-    const categorySel = document.createElement("select");
-    categorySel.className = "select";
-    for (const category of categories) {
-      const opt = document.createElement("option");
-      opt.value = String(category.id);
-      opt.textContent = category.name;
-      opt.selected = detail?.categoryId === category.id;
-      categorySel.appendChild(opt);
-    }
-    form.appendChild(field(t("form.category"), categorySel));
+    const categorySel = selectMenu({
+      options: categories.map((category) => ({
+        value: String(category.id),
+        label: category.name,
+      })),
+      value: String(detail?.categoryId ?? categories[0]?.id ?? ""),
+      label: t("form.category"),
+      onChange: () => fillStatuses(),
+    });
+    form.appendChild(field(t("form.category"), categorySel.el));
 
-    const statusSel = document.createElement("select");
-    statusSel.className = "select";
+    const statusSel = selectMenu({ options: [], value: "", label: t("form.status") });
     const fillStatuses = (): void => {
-      const category = categories.find((c) => c.id === Number(categorySel.value));
-      statusSel.innerHTML = "";
-      const none = document.createElement("option");
-      none.value = "";
-      none.textContent = t("form.status.none");
-      statusSel.appendChild(none);
-      for (const status of category?.statuses ?? []) {
-        const opt = document.createElement("option");
-        opt.value = String(status.id);
-        opt.textContent = status.name;
-        opt.selected = detail?.statusId === status.id;
-        statusSel.appendChild(opt);
-      }
+      const category = categories.find((c) => c.id === Number(categorySel.get()));
+      const statuses = category?.statuses ?? [];
+      statusSel.setOptions(
+        [
+          { value: "", label: t("form.status.none") },
+          ...statuses.map((status) => ({ value: String(status.id), label: status.name })),
+        ],
+        detail?.statusId != null && statuses.some((s) => s.id === detail.statusId)
+          ? String(detail.statusId)
+          : ""
+      );
     };
     fillStatuses();
-    categorySel.addEventListener("change", fillStatuses);
-    form.appendChild(field(t("form.status"), statusSel));
+    form.appendChild(field(t("form.status"), statusSel.el));
 
     // Rating
     const rating = starInput(detail?.rating ?? null, t("form.rating"));
@@ -195,30 +211,60 @@ export function renderTasteForm(
     imageActions.className = "image-actions";
     const fileInput = document.createElement("input");
     fileInput.type = "file";
-    fileInput.accept = "image/jpeg,image/png,image/webp";
+    fileInput.accept = "image/jpeg,image/png,image/webp,image/avif,image/gif";
     fileInput.className = "sr-only";
     fileInput.id = "image-file";
     const chooseBtn = document.createElement("label");
     chooseBtn.className = "btn";
     chooseBtn.htmlFor = "image-file";
-    chooseBtn.textContent = detail?.imageFile ? t("form.image.replace") : t("form.image.choose");
+    chooseBtn.appendChild(icon("photo", "icon icon-sm"));
+    chooseBtn.appendChild(
+      document.createTextNode(
+        detail?.imageFile ? t("form.image.replace") : t("form.image.choose")
+      )
+    );
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "btn btn-danger";
-    removeBtn.textContent = t("form.image.remove");
+    removeBtn.appendChild(icon("trash", "icon icon-sm"));
+    removeBtn.appendChild(document.createTextNode(t("form.image.remove")));
     removeBtn.addEventListener("click", () => {
       imageBlob = null;
       removeImage = true;
       fileInput.value = "";
       paintPreview();
     });
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
+    const acceptFile = async (file: File): Promise<void> => {
       imageBlob = await resizeForUpload(file);
       removeImage = false;
       paintPreview();
+    };
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) void acceptFile(file);
     });
+    // Drop an image onto the preview, or paste one from anywhere on the page.
+    preview.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      preview.dataset.drop = "true";
+    });
+    preview.addEventListener("dragleave", () => {
+      delete preview.dataset.drop;
+    });
+    preview.addEventListener("drop", (e) => {
+      e.preventDefault();
+      delete preview.dataset.drop;
+      const file = e.dataTransfer?.files?.[0];
+      if (file?.type.startsWith("image/")) void acceptFile(file);
+    });
+    const onPaste = (e: ClipboardEvent): void => {
+      const file = e.clipboardData?.files?.[0];
+      if (file?.type.startsWith("image/")) {
+        e.preventDefault();
+        void acceptFile(file);
+      }
+    };
+    document.addEventListener("paste", onPaste);
     imageActions.append(fileInput, chooseBtn, removeBtn);
     imageWrap.appendChild(imageActions);
     form.appendChild(field(t("form.image"), imageWrap, t("form.image.hint")));
@@ -317,7 +363,7 @@ export function renderTasteForm(
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "icon-btn btn-danger";
-        remove.title = t("form.links.remove");
+        tip(remove, t("form.links.remove"));
         remove.setAttribute("aria-label", t("form.links.remove"));
         remove.appendChild(icon("trash", "icon icon-sm"));
         remove.addEventListener("click", () => {
@@ -359,6 +405,48 @@ export function renderTasteForm(
     errorBox.hidden = true;
     form.appendChild(errorBox);
 
+    // Unsaved-changes guard: compare a serialized snapshot of the form state
+    // instead of tracking every widget's events.
+    const snapshot = (): string =>
+      JSON.stringify([
+        title.value,
+        categorySel.get(),
+        rating.get(),
+        statusSel.get(),
+        tags.get(),
+        date.get(),
+        lat.value,
+        lng.value,
+        externalMode,
+        externalUrl.value,
+        sections.get(),
+        links,
+        published.input.checked,
+        favorite.input.checked,
+        imageBlob !== null,
+        removeImage,
+      ]);
+    const initialState = snapshot();
+    let saved = false;
+    const isDirty = (): boolean => !saved && snapshot() !== initialState;
+
+    setNavGuard(async () =>
+      isDirty() ? confirmDialog(t("form.leave.confirm"), t("form.leave.action")) : true
+    );
+    const onBeforeUnload = (e: BeforeUnloadEvent): void => {
+      if (isDirty()) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    cleanup = () => {
+      cleanup = null; // idempotent: the router may call teardown more than once
+      setNavGuard(null);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("paste", onPaste);
+    };
+    // If the page was torn down while data was loading, the returned teardown
+    // already ran against a null cleanup; undo the just-installed setup now.
+    if (disposed) cleanup();
+
     const actions = document.createElement("div");
     actions.className = "dialog-actions form-actions";
     const save = document.createElement("button");
@@ -371,6 +459,14 @@ export function renderTasteForm(
     cancel.textContent = t("form.cancel");
     actions.append(save, cancel);
     form.appendChild(actions);
+
+    // A taste needs a category; block saving (and guide the owner) when none
+    // exist yet rather than sending an invalid categoryId.
+    if (!categories.length) {
+      save.disabled = true;
+      errorBox.hidden = false;
+      errorBox.textContent = t("form.noCategories");
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -392,9 +488,9 @@ export function renderTasteForm(
 
       const input: TasteInput = {
         title: title.value.trim(),
-        categoryId: Number(categorySel.value),
+        categoryId: Number(categorySel.get()),
         rating: rating.get(),
-        statusId: statusSel.value ? Number(statusSel.value) : null,
+        statusId: statusSel.get() ? Number(statusSel.get()) : null,
         tags: tags.get(),
         refDate: date.get(),
         location: latValue !== "" ? { lat: Number(latValue), lng: Number(lngValue) } : null,
@@ -407,21 +503,22 @@ export function renderTasteForm(
 
       save.disabled = true;
       try {
-        const saved: TasteDetail = editId
+        const result: TasteDetail = editId
           ? await adminApi.updateTaste(editId, input)
           : await adminApi.createTaste(input);
         if (imageBlob) {
           try {
-            await adminApi.uploadImage(saved.id, imageBlob.blob, imageBlob.filename);
+            await adminApi.uploadImage(result.id, imageBlob.blob, imageBlob.filename);
           } catch {
             toast(t("form.image.error"), "error");
           }
         } else if (removeImage && detail?.imageFile) {
-          await adminApi.deleteImage(saved.id).catch(() => undefined);
+          await adminApi.deleteImage(result.id).catch(() => undefined);
         }
+        saved = true;
         invalidateCatalog();
         toast(t("form.saved"), "success");
-        navigate(`/taste/${saved.id}`);
+        navigate(`/taste/${result.id}`);
       } catch (err) {
         save.disabled = false;
         errorBox.hidden = false;
@@ -439,4 +536,9 @@ export function renderTasteForm(
 
     title.focus();
   })();
+
+  return () => {
+    disposed = true;
+    cleanup?.();
+  };
 }

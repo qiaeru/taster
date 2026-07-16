@@ -14,7 +14,9 @@ export default fp(async function securityHeadersPlugin(app) {
         "default-src": ["'self'"],
         "script-src": ["'self'"],
         "style-src": ["'self'"],
-        "img-src": ["'self'", "data:"],
+        // blob: lets the admin form preview a freshly chosen image before
+        // upload (URL.createObjectURL); blob URLs are same-origin only.
+        "img-src": ["'self'", "data:", "blob:"],
         "font-src": ["'self'"],
         "connect-src": ["'self'"],
         "worker-src": ["'self'"],

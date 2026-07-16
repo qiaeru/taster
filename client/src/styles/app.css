@@ -10,8 +10,8 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
-  --font-sans: "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Fraunces Variable", Georgia, serif;
+  --font-sans: "Hanken Grotesk Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Young Serif", Georgia, serif;
 
   --color-bg: var(--bg);
   --color-elev: var(--bg-elev);
@@ -41,5 +41,19 @@ body {
 #app {
   max-width: 72rem;
   margin-inline: auto;
-  padding: 0 1rem 4rem;
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* Pages fill the viewport so the footer sits at the bottom on short pages. */
+#app > main {
+  flex: 1;
+}
+
+/* The router focuses <main> after navigation so keyboard users land in the
+   new view; the container itself never needs a visible focus ring. */
+main:focus {
+  outline: none;
 }

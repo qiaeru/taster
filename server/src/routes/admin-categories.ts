@@ -15,7 +15,7 @@ const ID_PARAMS = {
   properties: { id: { type: "integer", minimum: 1 } },
 } as const;
 
-function slugify(name: string): string {
+export function slugify(name: string): string {
   const base = name
     .toLowerCase()
     .normalize("NFD")
@@ -25,7 +25,7 @@ function slugify(name: string): string {
   return base || "category";
 }
 
-function uniqueSlug(name: string): string {
+export function uniqueSlug(name: string): string {
   const db = getDb();
   const base = slugify(name);
   let candidate = base;
@@ -60,7 +60,7 @@ export default async function adminCategoryRoutes(app: FastifyInstance) {
         .prepare("INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)")
         .run(slug, name, icon, color, maxOrder + 1);
       // New categories start with the generic statuses of the seed locale.
-      const statuses = GENERIC_STATUSES[seededLocale()] ?? GENERIC_STATUSES.fr;
+      const statuses = GENERIC_STATUSES[seededLocale()] ?? GENERIC_STATUSES.en;
       const insert = db.prepare(
         "INSERT INTO statuses (category_id, name, sort_order) VALUES (?, ?, ?)"
       );

@@ -38,7 +38,7 @@ FROM node:24-slim AS runtime
 ARG VERSION
 ARG REVISION
 LABEL org.opencontainers.image.title="taster" \
-      org.opencontainers.image.description="Self-hosted showcase of your personal tastes: rate, tag and review films, series, video games, recipes and more." \
+      org.opencontainers.image.description="A self-hosted showcase of your personal tastes. Rate, tag and review movies, TV shows, video games, restaurants and more, and share them as a beautiful filterable list." \
       org.opencontainers.image.source="https://github.com/qiaeru/taster" \
       org.opencontainers.image.url="https://github.com/qiaeru/taster" \
       org.opencontainers.image.documentation="https://github.com/qiaeru/taster#readme" \

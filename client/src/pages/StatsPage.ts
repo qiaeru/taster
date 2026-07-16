@@ -7,9 +7,10 @@ import { renderHeader } from "../components/Header.js";
 import { icon } from "../components/Icon.js";
 import { t } from "../i18n/index.js";
 
-function statTile(value: string, label: string): HTMLElement {
-  const tile = document.createElement("div");
+function statTile(value: string, label: string, href: string): HTMLElement {
+  const tile = document.createElement("a");
   tile.className = "stat-tile";
+  tile.href = href;
   const v = document.createElement("span");
   v.className = "stat-value";
   v.textContent = value;
@@ -20,9 +21,17 @@ function statTile(value: string, label: string): HTMLElement {
   return tile;
 }
 
-function barRow(label: HTMLElement | string, count: number, max: number, color?: string): HTMLElement {
-  const row = document.createElement("div");
+// Each row links to the public list with the matching filter applied.
+function barRow(
+  label: HTMLElement | string,
+  count: number,
+  max: number,
+  href: string,
+  color?: string
+): HTMLElement {
+  const row = document.createElement("a");
   row.className = "bar-row";
+  row.href = href;
   const lab = document.createElement("span");
   lab.className = "bar-label";
   if (typeof label === "string") lab.textContent = label;
@@ -83,9 +92,13 @@ export function renderStats(root: HTMLElement): () => void {
 
     const tiles = document.createElement("div");
     tiles.className = "stat-tiles";
-    tiles.appendChild(statTile(String(tastes.length), t("stats.total")));
-    tiles.appendChild(statTile(String(tastes.filter((x) => x.favorite).length), t("stats.favorites")));
-    tiles.appendChild(statTile(String(tastes.filter((x) => x.rating !== null).length), t("stats.rated")));
+    tiles.appendChild(statTile(String(tastes.length), t("stats.total"), "/"));
+    tiles.appendChild(
+      statTile(String(tastes.filter((x) => x.favorite).length), t("stats.favorites"), "/?fav=1")
+    );
+    tiles.appendChild(
+      statTile(String(tastes.filter((x) => x.rating !== null).length), t("stats.rated"), "/?min=1")
+    );
     main.appendChild(tiles);
 
     // Per category
@@ -101,7 +114,7 @@ export function renderStats(root: HTMLElement): () => void {
       label.style.setProperty("--cat-color", c.color);
       label.appendChild(icon(c.icon, "icon icon-sm"));
       label.appendChild(document.createTextNode(c.name));
-      byCat.body.appendChild(barRow(label, n, maxCat, c.color));
+      byCat.body.appendChild(barRow(label, n, maxCat, `/?cat=${encodeURIComponent(c.slug)}`, c.color));
     }
     main.appendChild(byCat.wrap);
 
@@ -113,7 +126,7 @@ export function renderStats(root: HTMLElement): () => void {
     }));
     const maxRating = Math.max(...ratingCounts.map((x) => x.n), 0);
     for (const { r, n } of ratingCounts) {
-      byRating.body.appendChild(barRow(`${"★".repeat(r)} ${t(`rating.${r}`)}`, n, maxRating));
+      byRating.body.appendChild(barRow(`${"★".repeat(r)} ${t(`rating.${r}`)}`, n, maxRating, `/?r=${r}`));
     }
     main.appendChild(byRating.wrap);
 
@@ -127,7 +140,8 @@ export function renderStats(root: HTMLElement): () => void {
     if (topTags.length) {
       const tagsSection = section(t("stats.topTags"));
       const maxTag = topTags[0][1];
-      for (const [name, n] of topTags) tagsSection.body.appendChild(barRow(name, n, maxTag));
+      for (const [name, n] of topTags)
+        tagsSection.body.appendChild(barRow(name, n, maxTag, `/?tags=${encodeURIComponent(name)}`));
       main.appendChild(tagsSection.wrap);
     }
   });

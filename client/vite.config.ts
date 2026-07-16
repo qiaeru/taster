@@ -24,5 +24,8 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "../server/dist/public"),
     emptyOutDir: true,
     target: "es2022",
+    // Never inline assets as data: URIs; the strict CSP (font-src 'self')
+    // blocks them, and small font subsets would otherwise be inlined.
+    assetsInlineLimit: 0,
   },
 });

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Entry point: fonts, styles, theme, locale-driven re-render, router.
 
-import "@fontsource-variable/inter";
-import "@fontsource-variable/fraunces";
+import "@fontsource-variable/hanken-grotesk";
+import "@fontsource/young-serif";
 import "./styles/app.css";
 
 import { initTheme } from "./lib/theme.js";

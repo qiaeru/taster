@@ -9,6 +9,9 @@ export default fp(async function sessionPlugin(app) {
   await app.register(secureSession, {
     key: config.sessionKey,
     cookieName: "taster.sid",
+    // Server-side TTL: a timestamp inside the encrypted payload, so a stolen
+    // cookie dies after 30 days even if the browser-side maxAge is tampered.
+    expiry: 60 * 60 * 24 * 30,
     cookie: {
       path: "/",
       httpOnly: true,

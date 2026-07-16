@@ -23,7 +23,7 @@ export class ImageValidationError extends Error {
   }
 }
 
-function sniffFormat(buf: Buffer): "jpeg" | "png" | "webp" | null {
+function sniffFormat(buf: Buffer): "jpeg" | "png" | "webp" | "avif" | "gif" | null {
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpeg";
   if (
     buf.length >= 8 &&
@@ -44,6 +44,17 @@ function sniffFormat(buf: Buffer): "jpeg" | "png" | "webp" | null {
     buf.toString("latin1", 8, 12) === "WEBP"
   ) {
     return "webp";
+  }
+  // ISO BMFF container with an AVIF brand ("avis" is the sequence variant).
+  if (
+    buf.length >= 12 &&
+    buf.toString("latin1", 4, 8) === "ftyp" &&
+    ["avif", "avis"].includes(buf.toString("latin1", 8, 12))
+  ) {
+    return "avif";
+  }
+  if (buf.length >= 6 && ["GIF87a", "GIF89a"].includes(buf.toString("latin1", 0, 6))) {
+    return "gif";
   }
   return null;
 }
@@ -69,7 +80,9 @@ export async function storeImage(buf: Buffer): Promise<string> {
   // `failOn: "error"` keeps sharp tolerant of slightly malformed files while
   // still rejecting garbage; a decode failure surfaces as INVALID_IMAGE.
   try {
-    const base = sharp(buf, { failOn: "error" }).rotate();
+    // limitInputPixels: a 5 MB file can still decode into a huge raw bitmap
+    // (pixel bomb); 50 MP comfortably covers real photos.
+    const base = sharp(buf, { failOn: "error", limitInputPixels: 50_000_000 }).rotate();
     await base
       .clone()
       .resize({ width: DISPLAY_MAX_EDGE, height: DISPLAY_MAX_EDGE, fit: "inside", withoutEnlargement: true })

@@ -5,6 +5,7 @@
 // keeps button/aria attributes, so the output stays safe.
 
 import { t } from "../i18n/index.js";
+import { tip } from "../components/Tooltip.js";
 
 type Marked = typeof import("marked");
 type DomPurifyModule = typeof import("dompurify");
@@ -16,10 +17,17 @@ async function getEngine() {
     enginePromise = Promise.all([import("marked"), import("dompurify")]).then(
       ([markedMod, dompurifyMod]) => {
         const purify = dompurifyMod.default;
-        // External links open in a new tab without opener access.
+        // External links open in a new tab without opener access. Scheme
+        // match is case-insensitive: "HTTPS://" would otherwise slip through
+        // with a hand-written rel="opener".
         purify.addHook("afterSanitizeAttributes", (node) => {
-          if (node.tagName === "A" && node.getAttribute("href")?.startsWith("http")) {
+          if (node.tagName !== "A") return;
+          if (/^https?:/i.test(node.getAttribute("href") ?? "")) {
             node.setAttribute("target", "_blank");
+            node.setAttribute("rel", "noopener noreferrer");
+          } else if (node.getAttribute("target") === "_blank") {
+            // Hand-written _blank anchors on other schemes never keep a
+            // custom rel (rel="opener" would allow tabnabbing).
             node.setAttribute("rel", "noopener noreferrer");
           }
         });
@@ -62,20 +70,25 @@ export async function renderMarkdown(md: string): Promise<HTMLElement> {
   const html = await marked.marked.parse(md, { async: true, gfm: true, breaks: true });
   const container = document.createElement("div");
   container.className = "prose";
-  container.innerHTML = purify.sanitize(html);
+  // Defense in depth on top of DOMPurify's defaults: reviews have no business
+  // containing form controls or inline styles (CSP blocks them anyway).
+  container.innerHTML = purify.sanitize(html, {
+    FORBID_TAGS: ["form", "input", "select", "textarea", "style"],
+    FORBID_ATTR: ["style"],
+  });
   wireSpoilers(container);
   return container;
 }
 
 function wireSpoilers(container: HTMLElement): void {
   for (const spoiler of container.querySelectorAll<HTMLButtonElement>("button.spoiler")) {
-    spoiler.title = t("spoiler.show");
+    tip(spoiler, t("spoiler.show"));
     spoiler.setAttribute("aria-label", t("spoiler.show"));
     spoiler.addEventListener("click", () => {
       const revealed = spoiler.getAttribute("aria-pressed") === "true";
       spoiler.setAttribute("aria-pressed", String(!revealed));
       const label = revealed ? t("spoiler.show") : t("spoiler.hide");
-      spoiler.title = label;
+      tip(spoiler, label);
       spoiler.setAttribute("aria-label", label);
     });
   }

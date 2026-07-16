@@ -33,6 +33,10 @@ import { config } from "../config.js";
 
 // ---- export ----
 
+// UTF-8 BOM: harmless for UTF-8-aware tools, but without it several Windows
+// programs (legacy Notepad, Excel) decode the file as ANSI and mangle accents.
+const BOM = "\uFEFF";
+
 function orderedTaste(id: string, withImage: boolean): ImportTaste | null {
   const detail = getTasteDetail(id);
   if (!detail) return null;
@@ -96,7 +100,7 @@ export function exportTastes(ids: string[] | null, withImages: boolean): string 
       .map((id) => orderedTaste(id, withImages))
       .filter((x): x is ImportTaste => x !== null),
   };
-  return JSON.stringify(file, null, 2) + "\n";
+  return BOM + JSON.stringify(file, null, 2) + "\n";
 }
 
 // ---- import ----
@@ -279,7 +283,7 @@ export function exportCategories(): string {
       statuses: (statusStmt.all(c.id) as { name: string }[]).map((s) => s.name),
     })),
   };
-  return JSON.stringify(file, null, 2) + "\n";
+  return BOM + JSON.stringify(file, null, 2) + "\n";
 }
 
 /**

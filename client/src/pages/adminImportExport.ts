@@ -79,7 +79,9 @@ function importControl(
     resultBox.hidden = true;
     let payload: unknown;
     try {
-      payload = JSON.parse(await file.text());
+      // Exports start with a UTF-8 BOM (for Windows editors); strict
+      // JSON.parse rejects it, so strip a leading one before parsing.
+      payload = JSON.parse((await file.text()).replace(/^\uFEFF/, ""));
     } catch {
       toast(t("io.import.invalidFile"), "error");
       fileInput.value = "";
@@ -130,7 +132,9 @@ function templateButton(payload: unknown, baseName: string): HTMLElement {
   btn.appendChild(icon("document-arrow-down", "icon icon-sm"));
   btn.appendChild(document.createTextNode(t("io.template")));
   btn.addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(payload, null, 2) + "\n"], {
+    // Same UTF-8 BOM as the server exports: keeps accents readable in
+    // Windows editors that default to ANSI on BOM-less files.
+    const blob = new Blob(["\uFEFF" + JSON.stringify(payload, null, 2) + "\n"], {
       type: "application/json",
     });
     const a = document.createElement("a");

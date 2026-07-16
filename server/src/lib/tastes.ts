@@ -4,8 +4,9 @@
 import type { AdminTasteSummary, TasteDetail, TasteSummary, Rating } from "@taster/shared";
 import { getDb } from "../db/index.js";
 
-// Tags are aggregated with the ASCII unit separator so tag names may contain
-// commas; GROUP_CONCAT's default separator would corrupt them.
+// Tags are aggregated with the ASCII unit separator: validation rejects
+// commas in new tags, but rows written before that rule could contain them
+// and GROUP_CONCAT's default comma separator would corrupt those.
 const SEP = String.fromCharCode(31);
 
 interface SummaryRow {
@@ -65,17 +66,17 @@ export function listAdminSummaries(): AdminTasteSummary[] {
   }));
 }
 
+const DETAIL_SELECT = SUMMARY_SELECT.replace(
+  "FROM tastes t",
+  ", t.lat, t.lng, t.external_review_url AS externalReviewUrl\n  FROM tastes t"
+);
+
 export function getTasteDetail(id: string): TasteDetail | null {
   const db = getDb();
-  const row = db.prepare(`${SUMMARY_SELECT} WHERE t.id = ?`).get(id) as unknown as
+  const row = db.prepare(`${DETAIL_SELECT} WHERE t.id = ?`).get(id) as unknown as
     | (SummaryRow & { lat: number | null; lng: number | null; externalReviewUrl: string | null })
     | undefined;
   if (!row) return null;
-  const extra = db
-    .prepare(
-      "SELECT lat, lng, external_review_url AS externalReviewUrl FROM tastes WHERE id = ?"
-    )
-    .get(id) as { lat: number | null; lng: number | null; externalReviewUrl: string | null };
   const sections = db
     .prepare(
       "SELECT subtitle, rating, body_md AS text FROM sections WHERE taste_id = ? ORDER BY sort_order"
@@ -86,8 +87,8 @@ export function getTasteDetail(id: string): TasteDetail | null {
     .all(id) as unknown as { label: string; url: string }[];
   return {
     ...toSummary(row),
-    location: extra.lat !== null && extra.lng !== null ? { lat: extra.lat, lng: extra.lng } : null,
-    externalReviewUrl: extra.externalReviewUrl,
+    location: row.lat !== null && row.lng !== null ? { lat: row.lat, lng: row.lng } : null,
+    externalReviewUrl: row.externalReviewUrl,
     sections,
     links,
     published: row.published === 1,

@@ -46,7 +46,13 @@ export default async function seoRoutes(app: FastifyInstance) {
       )
       .all(FEED_LIMIT) as unknown as FeedRow[];
 
-    const feedUpdated = rows.length > 0 ? toIso(rows[0].updatedAt) : new Date().toISOString();
+    // Feed-level <updated> must reflect the latest edit anywhere, not the
+    // newest entry's timestamp (rows are ordered by created_at, and an edited
+    // taste may not even be within the FEED_LIMIT newest).
+    const lastEdit = getDb()
+      .prepare("SELECT MAX(updated_at) AS m FROM tastes WHERE published = 1")
+      .get() as { m: string | null };
+    const feedUpdated = lastEdit.m ? toIso(lastEdit.m) : new Date().toISOString();
     const entries = rows
       .map((row) => {
         const url = `${base}/taste/${row.id}`;

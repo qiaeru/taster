@@ -29,7 +29,7 @@ export function closeDb(): void {
 
 // Reads a value from the generic `settings` key/value table. Returns null when
 // the key is absent.
-export function getSetting(key: string): string | null {
+function getSetting(key: string): string | null {
   const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
     | { value: string | null }
     | undefined;
@@ -52,14 +52,12 @@ export function bumpDataRevision(): void {
 
 // node:sqlite surfaces a UNIQUE violation as an Error with code
 // 'ERR_SQLITE_ERROR' and the extended result code 2067 (errcode), not the
-// 'SQLITE_CONSTRAINT_UNIQUE' string some drivers use. Match either, and the
-// message as a last resort, so duplicate-key handling stays robust.
+// 'SQLITE_CONSTRAINT_UNIQUE' string some drivers use. Match either; never
+// the message text, which varies across SQLite builds and locales.
 export function isUniqueViolation(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
-  const e = err as { code?: string; errcode?: number; message?: string };
-  if (e.code === "SQLITE_CONSTRAINT_UNIQUE") return true;
-  if (e.errcode === 2067) return true;
-  return /UNIQUE constraint failed/i.test(e.message || "");
+  const e = err as { code?: string; errcode?: number };
+  return e.code === "SQLITE_CONSTRAINT_UNIQUE" || e.errcode === 2067;
 }
 
 // Wraps `fn` inside an explicit BEGIN/COMMIT transaction. Mirrors the

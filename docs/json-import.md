@@ -25,7 +25,7 @@ All three keys are required. `tastes` contains one object per taste. Import is p
 | `status` | string | no | A status name of that category, case-insensitive (e.g. `"Watched"`, `"Finished"` on an English instance). Unknown statuses are an error. |
 | `favorite` | boolean | no | Defaults to `false`. |
 | `published` | boolean | no | Defaults to `true`; `false` keeps the entry as a draft. |
-| `tags` | string[] | no | Free-form labels (genres, cuisine, platform...). Max 50, deduplicated case-insensitively. |
+| `tags` | string[] | no | Free-form labels (genres, cuisine, platform...). Max 50, deduplicated case-insensitively; commas are not allowed in a tag name (the list filter URL separates tags with them). |
 | `date` | string | no | Flexible precision: `"1995"`, `"1995-03"` or `"1995-03-11"`. |
 | `location` | object | no | `{ "lat": 45.76, "lng": 4.83 }`, both required together. Shown as map links on the taste page. |
 | `externalReviewUrl` | string (URL) | no | "Read the full review" link, e.g. a blog post. http(s) only. |

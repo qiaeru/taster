@@ -89,7 +89,11 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
     for (const raw of input.tags) {
       if (typeof raw !== "string") throw new TasteValidationError("INVALID_TAGS");
       const tag = raw.trim();
-      if (!tag || tag.length > MAX_TAG) throw new TasteValidationError("INVALID_TAGS");
+      // Commas are reserved: the client's ?tags= filter is comma-separated,
+      // and the tag input widget already refuses them.
+      if (!tag || tag.length > MAX_TAG || tag.includes(",")) {
+        throw new TasteValidationError("INVALID_TAGS");
+      }
       const fold = tag.toLowerCase();
       if (!seen.has(fold)) {
         seen.add(fold);

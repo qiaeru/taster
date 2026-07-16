@@ -250,5 +250,6 @@
   "account.changed": "Mot de passe changé.",
 
   "footer.developedBy": "Développé par",
-  "footer.sourceCode": "Code source sur"
+  "footer.sourceCode": "Code source sur",
+  "footer.feed": "Flux Atom"
 }

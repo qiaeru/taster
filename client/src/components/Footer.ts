@@ -4,6 +4,7 @@
 
 import { siGithub } from "simple-icons";
 import { brandIcon } from "./BrandIcon.js";
+import { icon } from "./Icon.js";
 import { t } from "../i18n/index.js";
 
 const REPO_URL = "https://github.com/qiaeru/taster";
@@ -52,6 +53,19 @@ export function renderFooter(): HTMLElement {
   repo.setAttribute("aria-label", "GitHub");
   repo.appendChild(brandIcon(siGithub, "site-footer-logo"));
 
-  footer.append(developedBy, author, sep, sourceCode, repo);
+  const sep2 = document.createElement("span");
+  sep2.className = "site-footer-sep";
+  sep2.setAttribute("aria-hidden", "true");
+  sep2.textContent = "|";
+
+  // Plain link, not target=_blank: feed readers and browsers handle it.
+  const feed = document.createElement("a");
+  feed.className = "site-footer-link";
+  feed.href = "/feed.xml";
+  feed.setAttribute("aria-label", t("footer.feed"));
+  feed.appendChild(icon("rss", "icon icon-sm"));
+  feed.appendChild(document.createTextNode(t("footer.feed")));
+
+  footer.append(developedBy, author, sep, sourceCode, repo, sep2, feed);
   return footer;
 }

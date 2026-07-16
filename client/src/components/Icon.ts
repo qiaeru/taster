@@ -49,6 +49,7 @@ import documentArrowDownO from "heroicons/24/outline/document-arrow-down.svg?raw
 import documentArrowUpO from "heroicons/24/outline/document-arrow-up.svg?raw";
 import photoO from "heroicons/24/outline/photo.svg?raw";
 import eyeO from "heroicons/24/outline/eye.svg?raw";
+import rssO from "heroicons/24/outline/rss.svg?raw";
 // Hand-drawn die (five face) in the Heroicons outline style; Heroicons has no
 // dice icon and the random button should not look like an AI sparkle.
 const dieO =
@@ -112,6 +113,7 @@ const ICONS: Record<string, string> = {
   "document-arrow-down": documentArrowDownO,
   "document-arrow-up": documentArrowUpO,
   photo: photoO,
+  rss: rssO,
   eye: eyeO,
   "star-solid": starS,
   "heart-solid": heartS,

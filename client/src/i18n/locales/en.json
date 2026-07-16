@@ -250,5 +250,6 @@
   "account.changed": "Password changed.",
 
   "footer.developedBy": "Developed by",
-  "footer.sourceCode": "Source code on"
+  "footer.sourceCode": "Source code on",
+  "footer.feed": "Atom feed"
 }

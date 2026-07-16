@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Cover images can get a focal point (click the preview in the edit form) that card thumbnails keep centered, so portrait covers stop being cropped mid-face; the point travels through JSON export and import.
+- The admin taste list supports bulk actions: check several entries to publish, unpublish or delete them at once.
+- The statistics page shows the average rating per category and a timeline of additions per month.
+- The footer links to the Atom feed so visitors can subscribe.
 - The taste form autosaves a local draft every couple of seconds and restores it when the form reopens, so a crash or a closed tab no longer loses a review in progress.
 - The sort direction can be reversed with a dedicated button next to the sort selector.
 - JSON imports show a preview (how many entries would be created, updated or rejected) and ask for confirmation before writing anything.

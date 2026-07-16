@@ -80,6 +80,8 @@
   "stats.rated": "Notés",
   "stats.byCategory": "Par catégorie",
   "stats.byRating": "Répartition des notes",
+  "stats.avgByCategory": "Note moyenne par catégorie",
+  "stats.byMonth": "Ajouts par mois",
   "stats.topTags": "Étiquettes les plus fréquentes",
   "stats.empty": "Pas encore de données à afficher.",
 

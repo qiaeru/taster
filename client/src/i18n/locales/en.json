@@ -80,6 +80,8 @@
   "stats.rated": "Rated",
   "stats.byCategory": "By category",
   "stats.byRating": "Rating distribution",
+  "stats.avgByCategory": "Average rating per category",
+  "stats.byMonth": "Additions per month",
   "stats.topTags": "Most frequent tags",
   "stats.empty": "No data to show yet.",
 

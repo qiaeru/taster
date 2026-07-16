@@ -5,7 +5,7 @@
 import { loadCatalog, type Catalog } from "../api.js";
 import { renderHeader } from "../components/Header.js";
 import { icon } from "../components/Icon.js";
-import { t } from "../i18n/index.js";
+import { t, locale$ } from "../i18n/index.js";
 
 function statTile(value: string, label: string, href: string): HTMLElement {
   const tile = document.createElement("a");
@@ -27,7 +27,8 @@ function barRow(
   count: number,
   max: number,
   href: string,
-  color?: string
+  color?: string,
+  countText?: string
 ): HTMLElement {
   const row = document.createElement("a");
   row.className = "bar-row";
@@ -49,7 +50,7 @@ function barRow(
   row.appendChild(track);
   const num = document.createElement("span");
   num.className = "bar-count muted";
-  num.textContent = String(count);
+  num.textContent = countText ?? String(count);
   row.appendChild(num);
   return row;
 }
@@ -144,6 +145,34 @@ export function renderStats(root: HTMLElement): () => void {
     }
     main.appendChild(byCat.wrap);
 
+    // Average rating per category (rated tastes only)
+    const averages = categories
+      .map((c) => {
+        const rated = tastes.filter((x) => x.categoryId === c.id && x.rating !== null);
+        const sum = rated.reduce((acc, x) => acc + (x.rating ?? 0), 0);
+        return { c, n: rated.length, avg: rated.length ? sum / rated.length : 0 };
+      })
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.avg - a.avg);
+    if (averages.length) {
+      const avgSection = section(t("stats.avgByCategory"));
+      const format = new Intl.NumberFormat(locale$.get(), {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      });
+      for (const { c, avg } of averages) {
+        const label = document.createElement("span");
+        label.className = "cat-badge";
+        label.style.setProperty("--cat-color", c.color);
+        label.appendChild(icon(c.icon, "icon icon-sm"));
+        label.appendChild(document.createTextNode(c.name));
+        avgSection.body.appendChild(
+          barRow(label, avg, 5, `/?cat=${encodeURIComponent(c.slug)}`, c.color, `${format.format(avg)} ★`)
+        );
+      }
+      main.appendChild(avgSection.wrap);
+    }
+
     // Rating distribution
     const byRating = section(t("stats.byRating"));
     const ratingCounts = [5, 4, 3, 2, 1].map((r) => ({
@@ -155,6 +184,28 @@ export function renderStats(root: HTMLElement): () => void {
       byRating.body.appendChild(barRow(`${"★".repeat(r)} ${t(`rating.${r}`)}`, n, maxRating, `/?r=${r}`));
     }
     main.appendChild(byRating.wrap);
+
+    // Additions per month, last 12 months (empty months included so the
+    // timeline reads honestly).
+    const monthCounts = new Map<string, number>();
+    for (const taste of tastes) {
+      const key = taste.createdAt.slice(0, 7);
+      monthCounts.set(key, (monthCounts.get(key) ?? 0) + 1);
+    }
+    const now = new Date();
+    const months: { key: string; label: string; n: number }[] = [];
+    const monthFormat = new Intl.DateTimeFormat(locale$.get(), { month: "short", year: "numeric" });
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.push({ key, label: monthFormat.format(d), n: monthCounts.get(key) ?? 0 });
+    }
+    if (months.some((m) => m.n > 0)) {
+      const monthSection = section(t("stats.byMonth"));
+      const maxMonth = Math.max(...months.map((m) => m.n));
+      for (const m of months) monthSection.body.appendChild(barRow(m.label, m.n, maxMonth, "/"));
+      main.appendChild(monthSection.wrap);
+    }
 
     // Top tags
     const tagCounts = new Map<string, number>();

@@ -5,7 +5,7 @@
   "nav.admin": "Administration",
   "nav.backToList": "Retour à la liste",
 
-  "a11y.themeToggle": "Basculer entre thème clair et thème sombre",
+  "a11y.themeToggle": "Basculer entre thème clair et sombre",
   "a11y.languageToggle": "Changer de langue",
   "a11y.skipToContent": "Aller au contenu",
 
@@ -23,7 +23,7 @@
   "filters.lessTags": "Voir moins",
   "filters.favorites": "Coups de cœur",
   "filters.clear": "Réinitialiser les filtres",
-  "filters.random": "Au hasard",
+  "filters.random": "Aléatoire",
 
   "sort.label": "Trier par",
   "sort.recent": "Ajouts récents",
@@ -57,12 +57,12 @@
   "list.backToTop": "Retour en haut",
   "list.loading": "Chargement…",
 
-  "detail.links": "Pour aller plus loin",
+  "detail.links": "Pour aller plus loin…",
   "detail.location": "Lieu",
   "detail.location.geo": "Ouvrir dans une application de cartes",
   "detail.location.osm": "OpenStreetMap",
   "detail.location.gmaps": "Google Maps",
-  "detail.externalReview": "Lire la critique complète",
+  "detail.externalReview": "Lire la critique",
   "detail.notFound": "Ce goût n’existe pas (ou plus).",
   "detail.addedOn": "Ajouté le {{date}}",
   "detail.edit": "Modifier",

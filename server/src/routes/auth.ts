@@ -21,6 +21,11 @@ function recordFailedLogin(ip: string, now: number): void {
   failedLogins.set(ip, { count, resetAt: now + LOCKOUT_MINUTES * 60_000 });
 }
 
+// Verified when the username does not exist, so unknown and known usernames
+// take the same time to answer 401 (Argon2 runs either way); an immediate
+// return would let response latency reveal the admin's username.
+const decoyHash = hashPassword("taster-timing-decoy");
+
 function lockedUntil(ip: string, now: number): number | null {
   if (failedLogins.size > 1000) {
     for (const [key, entry] of failedLogins) if (entry.resetAt <= now) failedLogins.delete(key);
@@ -92,6 +97,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
       if (!row) {
         // Generic message, do not leak which side failed.
+        await verifyPassword(await decoyHash, body.password);
         recordFailedLogin(request.ip, now);
         return reply.code(401).send({ error: "INVALID_CREDENTIALS" });
       }

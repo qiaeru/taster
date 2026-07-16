@@ -7,14 +7,14 @@
 
 A self-hosted showcase of your personal tastes. Rate, tag and review movies, TV shows, video games, restaurants and more, and share them as a beautiful filterable list.
 
-Visitors browse a card grid they can filter by category, tag, status, rating or favorites, search instantly, and flip into a tier-list view grouped by rating. Each taste has its own page with star ratings, a sectioned review (Markdown, with click-to-reveal spoilers), reference links, an optional map location and a "read the full review" link back to your blog. Only you edit, behind a hardened admin login.
+Visitors browse a card grid they can filter by category, tag, status, rating or favorites, search instantly, and sort by rating into a tier list grouped by stars. Each taste has its own page with star ratings, a sectioned review (Markdown, with click-to-reveal spoilers), reference links, an optional map location and a "read the full review" link back to your blog. Only you edit, behind a hardened admin login.
 
 > **Yours, entirely.** One container, one SQLite file, images stored and recompressed locally. No telemetry, no CDN, no external network call at runtime.
 
 | List | Taste page |
 | :--: | :--: |
 | ![The Taster list with category chips and filters](./docs/assets/screenshot1.png) | ![A taste page with review sections and links](./docs/assets/screenshot2.png) |
-| *The public list: category chips, filters, search, grid / compact / tier-list views* | *A taste page: ratings, tags, review sections, reference links* |
+| *The public list: category chips, filters, search, grid and list views* | *A taste page: ratings, tags, review sections, reference links* |
 
 ## Highlights
 
@@ -22,7 +22,7 @@ Visitors browse a card grid they can filter by category, tag, status, rating or 
 
 - **One list for every taste.** Categories are yours to define (movies, TV shows, video games, restaurants, books and music are seeded) with their own icon, color and progress statuses (Watched, Watching or To watch for movies, Finished, Dropped or To play for games...).
 - **Rich taste pages.** 1-5 star rating with labels (Terrible to Excellent), free-form tags, flexible-precision dates (year, month or day), an illustration image, GPS coordinates that open the visitor's preferred maps app, reference links (Wikipedia, IMDb...), and a review split into titled sections with optional sub-ratings, or a single link to your full review on your blog.
-- **A pleasant browse.** Instant accent-insensitive search over titles and tags, contextual filters, four sort orders, three views (grid, compact rows, tier list by rating), a random pick button, and shareable URLs that capture the current filters.
+- **A pleasant browse.** Instant accent-insensitive search over titles and tags, contextual filters, four reversible sort orders (the rating sort renders as a tier list grouped by stars), grid and list views, a random pick button, and shareable URLs that capture the current filters.
 - **Made to be shared.** Real permalinks with server-rendered OpenGraph previews (links unfurl nicely on Mastodon, Discord and friends), an Atom feed of your latest tastes, a sitemap, a public statistics page and an installable PWA.
 - **Drafts and favorites.** Prepare an entry privately until its blog post ships; pin your favorites with a heart badge and a dedicated filter.
 - **AI-friendly import.** Import one or many tastes from a documented JSON file (images embeddable in base64); hand the format doc to an AI assistant and paste the result. Re-importing an export updates entries in place, and full exports double as portable backups.

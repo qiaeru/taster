@@ -659,6 +659,9 @@
     flex-wrap: wrap;
     gap: 0.3rem;
   }
+  .card-date {
+    font-size: 0.78rem;
+  }
 
   /* stars */
   .stars {

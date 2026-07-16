@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// The list card, in two densities: rich card (grid/tiers) and compact row.
+// The list card, in two densities: rich card (grid) and compact row (list).
 // Cards load the thumb variant only; width/height attributes prevent layout
 // shift and loading=lazy keeps long lists cheap, except the first above-the-
 // fold cards which load eagerly at high priority so the top of the page does
@@ -17,7 +17,7 @@ export interface CardContext {
   statuses: Map<number, Status>;
   /** Extra badge for the admin table ("draft"). */
   draft?: boolean;
-  /** Compact rows: date to display for the active sort (null = none). */
+  /** Date to display for the active sort (null = none). */
   rowDate?: (taste: TasteSummary) => string | null;
 }
 
@@ -119,6 +119,14 @@ export function tasteCard(taste: TasteSummary, ctx: CardContext, eager = false):
     chipRow.appendChild(more);
   }
   if (chipRow.childElementCount > 0) body.appendChild(chipRow);
+
+  const dateText = ctx.rowDate?.(taste);
+  if (dateText) {
+    const date = document.createElement("span");
+    date.className = "muted card-date";
+    date.textContent = dateText;
+    body.appendChild(date);
+  }
 
   card.appendChild(body);
   return card;

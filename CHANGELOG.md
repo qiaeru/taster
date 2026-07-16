@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- The tier list is no longer a separate view: sorting by rating now groups entries by stars in both the grid and list views, and reversing the sort flips the tiers. Old tier-list links open as a rating-sorted list.
+- The compact view is renamed "List".
+- The grid view shows each entry's date when sorting by date added or reference date, like the list view.
+
 ### Fixed
 
 - The sort selector's icon and the reverse button sit properly inside the toolbar instead of overflowing below it.

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-// The public list: category chips, contextual filters, instant search, three
-// display modes (grid, compact rows, tier list) and a random pick. All
-// filtering happens in memory over the cached catalog; the state mirrors
-// into the query string so any view is shareable.
+// The public list: category chips, contextual filters, instant search, two
+// display modes (grid, list rows) and a random pick; the rating sort renders
+// as a tier list in either mode. All filtering happens in memory over the
+// cached catalog; the state mirrors into the query string so any view is
+// shareable.
 
 import type { Category, Rating, Status, TasteSummary } from "@taster/shared";
 import { loadCatalog, type Catalog } from "../api.js";
@@ -18,7 +19,7 @@ import { rememberListOrder } from "../lib/listOrder.js";
 import { navigate, replaceQuery } from "../router.js";
 
 type SortKey = "recent" | "date" | "rating" | "title";
-type ViewKey = "grid" | "compact" | "tiers";
+type ViewKey = "grid" | "compact";
 
 interface ListState {
   q: string;
@@ -40,8 +41,11 @@ const VIEW_KEY = "taster:view";
 const EAGER_CARDS = 8;
 
 function readState(params: URLSearchParams): ListState {
-  const sort = params.get("sort") as SortKey | null;
-  const view = (params.get("view") as ViewKey | null) ?? readSavedView();
+  let sort = params.get("sort") as SortKey | null;
+  const view = params.get("view") ?? readSavedView();
+  // The dedicated tier view is gone; old ?view=tiers links keep their meaning
+  // through the rating sort, which renders as a tier list.
+  if (params.get("view") === "tiers" && !sort) sort = "rating";
   const exact = Number(params.get("r"));
   return {
     q: params.get("q") ?? "",
@@ -53,13 +57,13 @@ function readState(params: URLSearchParams): ListState {
     favorites: params.get("fav") === "1",
     sort: sort && ["recent", "date", "rating", "title"].includes(sort) ? sort : "recent",
     rev: params.get("rev") === "1",
-    view: ["grid", "compact", "tiers"].includes(view ?? "") ? (view as ViewKey) : "grid",
+    view: ["grid", "compact"].includes(view ?? "") ? (view as ViewKey) : "grid",
   };
 }
 
-function readSavedView(): ViewKey | null {
+function readSavedView(): string | null {
   try {
-    return localStorage.getItem(VIEW_KEY) as ViewKey | null;
+    return localStorage.getItem(VIEW_KEY);
   } catch {
     return null;
   }
@@ -304,7 +308,6 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     const viewDefs: Array<{ key: ViewKey; iconName: string }> = [
       { key: "grid", iconName: "squares-2x2" },
       { key: "compact", iconName: "list-bullet" },
-      { key: "tiers", iconName: "trophy" },
     ];
     for (const def of viewDefs) {
       const btn = document.createElement("button");
@@ -637,16 +640,17 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       return;
     }
 
-    if (state.view === "tiers") {
-      // Within a row the chosen sort applies; sorting by rating is meaningless
-      // inside a same-rating row, so it falls back to alphabetical.
-      const rowSort: SortKey = state.sort === "rating" ? "title" : state.sort;
-      const groups: Array<{ rating: Rating | null; items: TasteSummary[] }> = [];
-      for (const r of [5, 4, 3, 2, 1] as Rating[]) {
-        groups.push({ rating: r, items: filtered.filter((x) => x.rating === r) });
-      }
+    if (state.sort === "rating") {
+      // The rating sort renders as a tier list: one section per rating, best
+      // first (reverse flips the sections, never the titles). Sorting by
+      // rating is meaningless inside a same-rating section, so entries read
+      // alphabetically.
+      const ratings: Rating[] = state.rev ? [1, 2, 3, 4, 5] : [5, 4, 3, 2, 1];
+      const groups: Array<{ rating: Rating | null; items: TasteSummary[] }> = ratings.map(
+        (r) => ({ rating: r, items: filtered.filter((x) => x.rating === r) })
+      );
       groups.push({ rating: null, items: filtered.filter((x) => x.rating === null) });
-      for (const group of groups) group.items = sortTastes(group.items, rowSort, state.rev);
+      for (const group of groups) group.items = sortTastes(group.items, "title");
       rememberListOrder(groups.flatMap((group) => group.items.map((x) => x.id)));
 
       let eagerLeft = EAGER_CARDS;
@@ -668,25 +672,32 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
         head.appendChild(count);
         section.appendChild(head);
 
-        const grid = document.createElement("div");
-        grid.className = "card-grid card-grid-tier";
-        for (const taste of group.items) {
-          grid.appendChild(tasteCard(taste, ctx, eagerLeft-- > 0));
+        if (state.view === "compact") {
+          const listEl = document.createElement("div");
+          listEl.className = "row-list";
+          for (const taste of group.items) listEl.appendChild(tasteRow(taste, ctx));
+          section.appendChild(listEl);
+        } else {
+          const grid = document.createElement("div");
+          grid.className = "card-grid card-grid-tier";
+          for (const taste of group.items) {
+            grid.appendChild(tasteCard(taste, ctx, eagerLeft-- > 0));
+          }
+          section.appendChild(grid);
         }
-        section.appendChild(grid);
         results.appendChild(section);
       }
       return;
     }
 
+    // Show the date driving the active sort, so the order stays legible; the
+    // title sort reads on its own.
+    if (state.sort === "recent") ctx.rowDate = (x) => formatDateTime(x.createdAt);
+    else if (state.sort === "date")
+      ctx.rowDate = (x) => (x.refDate ? formatPartialDate(x.refDate) : null);
     const sorted = sortTastes(filtered, state.sort, state.rev);
     rememberListOrder(sorted.map((x) => x.id));
     if (state.view === "compact") {
-      // Show the date driving the active sort, so the order stays legible;
-      // title and rating sorts read on their own.
-      if (state.sort === "recent") ctx.rowDate = (x) => formatDateTime(x.createdAt);
-      else if (state.sort === "date")
-        ctx.rowDate = (x) => (x.refDate ? formatPartialDate(x.refDate) : null);
       const listEl = document.createElement("div");
       listEl.className = "row-list";
       for (const taste of sorted) listEl.appendChild(tasteRow(taste, ctx));

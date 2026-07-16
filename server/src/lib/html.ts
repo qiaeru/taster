@@ -67,7 +67,9 @@ function excerptFor(tasteId: string): string | null {
     .get(tasteId) as { body_md: string } | undefined;
   if (!row) return null;
   const text = row.body_md
-    .replace(/\|\|[^|]*\|\|/g, "") // never leak spoilers into previews
+    // Never leak spoilers into previews. Non-greedy across any character:
+    // a spoiler whose text itself contains a "|" must still be stripped.
+    .replace(/\|\|[\s\S]*?\|\|/g, "")
     .replace(/[#*_`>[\]()!-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

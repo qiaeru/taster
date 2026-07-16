@@ -71,6 +71,7 @@ function orderedTaste(id: string, withImage: boolean): ImportTaste | null {
     });
   }
   if (detail.links.length) out.links = detail.links;
+  if (detail.imageFocus) out.imageFocus = detail.imageFocus;
   if (withImage && detail.imageFile) {
     try {
       // basename() mirrors deleteImageFiles: the column only ever holds
@@ -219,6 +220,7 @@ export async function importTastes(payload: unknown, dryRun = false): Promise<Im
         tags: item.tags,
         refDate: item.date ?? null,
         location: item.location ?? null,
+        imageFocus: item.imageFocus ?? null,
         externalReviewUrl: item.externalReviewUrl ?? null,
         published: item.published,
         favorite: item.favorite,

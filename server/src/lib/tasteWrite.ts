@@ -44,6 +44,8 @@ export interface CleanTaste {
   refDate: string | null;
   lat: number | null;
   lng: number | null;
+  focusX: number | null;
+  focusY: number | null;
   externalReviewUrl: string | null;
   published: boolean;
   favorite: boolean;
@@ -129,6 +131,27 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
     lng = loc.lng;
   }
 
+  let focusX: number | null = null;
+  let focusY: number | null = null;
+  if (input.imageFocus !== undefined && input.imageFocus !== null) {
+    const focus = input.imageFocus;
+    if (
+      typeof focus !== "object" ||
+      typeof focus.x !== "number" ||
+      typeof focus.y !== "number" ||
+      !Number.isFinite(focus.x) ||
+      !Number.isFinite(focus.y) ||
+      focus.x < 0 ||
+      focus.x > 1 ||
+      focus.y < 0 ||
+      focus.y > 1
+    ) {
+      throw new TasteValidationError("INVALID_IMAGE_FOCUS");
+    }
+    focusX = focus.x;
+    focusY = focus.y;
+  }
+
   let externalReviewUrl: string | null = null;
   if (
     input.externalReviewUrl !== undefined &&
@@ -198,6 +221,8 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
     refDate,
     lat,
     lng,
+    focusX,
+    focusY,
     externalReviewUrl,
     published: input.published !== false,
     favorite: input.favorite === true,
@@ -249,8 +274,8 @@ export const createTaste = transaction(
     const tasteId = id ?? randomUUID();
     db.prepare(
       `INSERT INTO tastes (id, title, category_id, rating, status_id, ref_date, lat, lng,
-                           external_review_url, published, favorite, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
+                           focus_x, focus_y, external_review_url, published, favorite, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
     ).run(
       tasteId,
       clean.title,
@@ -260,6 +285,8 @@ export const createTaste = transaction(
       clean.refDate,
       clean.lat,
       clean.lng,
+      clean.focusX,
+      clean.focusY,
       clean.externalReviewUrl,
       clean.published ? 1 : 0,
       clean.favorite ? 1 : 0,
@@ -277,8 +304,8 @@ export const updateTaste = transaction((tasteId: string, clean: CleanTaste): boo
   const info = db
     .prepare(
       `UPDATE tastes SET title = ?, category_id = ?, rating = ?, status_id = ?, ref_date = ?,
-         lat = ?, lng = ?, external_review_url = ?, published = ?, favorite = ?,
-         updated_at = datetime('now')
+         lat = ?, lng = ?, focus_x = ?, focus_y = ?, external_review_url = ?, published = ?,
+         favorite = ?, updated_at = datetime('now')
        WHERE id = ?`
     )
     .run(
@@ -289,6 +316,8 @@ export const updateTaste = transaction((tasteId: string, clean: CleanTaste): boo
       clean.refDate,
       clean.lat,
       clean.lng,
+      clean.focusX,
+      clean.focusY,
       clean.externalReviewUrl,
       clean.published ? 1 : 0,
       clean.favorite ? 1 : 0,

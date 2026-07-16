@@ -4,7 +4,7 @@
 // review sections or an external review link, reference links, published and
 // favorite toggles.
 
-import type { Category, ReviewSection, TasteDetail, TasteInput } from "@taster/shared";
+import type { Category, ImageFocus, ReviewSection, TasteDetail, TasteInput } from "@taster/shared";
 import { adminApi, authApi, publicApi, api, ApiError, invalidateCatalog, displayUrl } from "../api.js";
 import { renderHeader } from "../components/Header.js";
 import { icon } from "../components/Icon.js";
@@ -38,6 +38,7 @@ interface FormDraft {
   externalUrl: string;
   sections: ReviewSection[];
   links: { label: string; url: string }[];
+  imageFocus: ImageFocus | null;
   published: boolean;
   favorite: boolean;
   savedAt: string;
@@ -243,6 +244,7 @@ export function renderTasteForm(
     // Image
     let imageBlob: { blob: Blob; filename: string } | null = null;
     let removeImage = false;
+    let imageFocus: ImageFocus | null = draft ? draft.imageFocus ?? null : detail?.imageFocus ?? null;
     const imageWrap = document.createElement("div");
     imageWrap.className = "image-field";
     const preview = document.createElement("div");
@@ -255,7 +257,51 @@ export function renderTasteForm(
     previewEmpty.className = "muted";
     previewEmpty.appendChild(icon("photo", "icon icon-xl"));
     preview.appendChild(previewEmpty);
+    const focusMarker = document.createElement("span");
+    focusMarker.className = "focus-marker";
+    focusMarker.hidden = true;
+    preview.appendChild(focusMarker);
     imageWrap.appendChild(preview);
+
+    // The preview uses object-fit: contain, so the visible image occupies a
+    // centered content box inside the <img> element; both the click mapping
+    // and the marker position have to go through that box.
+    const contentBox = (): { left: number; top: number; w: number; h: number } | null => {
+      if (previewImg.hidden || !previewImg.naturalWidth || !previewImg.naturalHeight) return null;
+      const scale = Math.min(
+        previewImg.clientWidth / previewImg.naturalWidth,
+        previewImg.clientHeight / previewImg.naturalHeight
+      );
+      const w = previewImg.naturalWidth * scale;
+      const h = previewImg.naturalHeight * scale;
+      return {
+        left: previewImg.offsetLeft + (previewImg.clientWidth - w) / 2,
+        top: previewImg.offsetTop + (previewImg.clientHeight - h) / 2,
+        w,
+        h,
+      };
+    };
+    const paintMarker = (): void => {
+      const box = contentBox();
+      if (!imageFocus || !box) {
+        focusMarker.hidden = true;
+        return;
+      }
+      focusMarker.hidden = false;
+      focusMarker.style.left = `${box.left + imageFocus.x * box.w}px`;
+      focusMarker.style.top = `${box.top + imageFocus.y * box.h}px`;
+    };
+    previewImg.addEventListener("load", paintMarker);
+    preview.addEventListener("click", (e) => {
+      const box = contentBox();
+      if (!box) return;
+      const rect = preview.getBoundingClientRect();
+      const x = (e.clientX - rect.left - box.left) / box.w;
+      const y = (e.clientY - rect.top - box.top) / box.h;
+      if (x < 0 || x > 1 || y < 0 || y > 1) return; // letterbox area
+      imageFocus = { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 };
+      paintMarker();
+    });
 
     const paintPreview = (): void => {
       if (imageBlob) {
@@ -271,6 +317,7 @@ export function renderTasteForm(
         previewEmpty.hidden = false;
       }
       removeBtn.hidden = previewImg.hidden;
+      paintMarker();
     };
 
     const imageActions = document.createElement("div");
@@ -297,12 +344,15 @@ export function renderTasteForm(
     removeBtn.addEventListener("click", () => {
       imageBlob = null;
       removeImage = true;
+      imageFocus = null;
       fileInput.value = "";
       paintPreview();
     });
     const acceptFile = async (file: File): Promise<void> => {
       imageBlob = await resizeForUpload(file);
       removeImage = false;
+      // A new picture invalidates the old picture's focal point.
+      imageFocus = null;
       paintPreview();
     };
     fileInput.addEventListener("change", () => {
@@ -509,6 +559,7 @@ export function renderTasteForm(
         externalUrl.value,
         sections.get(),
         links,
+        imageFocus,
         published.input.checked,
         favorite.input.checked,
         imageBlob !== null,
@@ -533,6 +584,7 @@ export function renderTasteForm(
       externalUrl: externalUrl.value,
       sections: sections.get(),
       links,
+      imageFocus,
       published: published.input.checked,
       favorite: favorite.input.checked,
       savedAt: new Date().toISOString(),
@@ -614,6 +666,7 @@ export function renderTasteForm(
         tags: tags.get(),
         refDate: date.get(),
         location: latValue !== "" ? { lat: Number(latValue), lng: Number(lngValue) } : null,
+        imageFocus,
         externalReviewUrl: externalMode && externalUrl.value.trim() ? externalUrl.value.trim() : null,
         sections: externalMode ? [] : sections.get(),
         links: links.filter((l) => l.label.trim() || l.url.trim()),

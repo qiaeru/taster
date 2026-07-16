@@ -47,6 +47,9 @@ function media(taste: TasteSummary, category: Category | undefined, eager: boole
     img.decoding = "async";
     img.width = 480;
     img.height = 320;
+    if (taste.imageFocus) {
+      img.style.objectPosition = `${taste.imageFocus.x * 100}% ${taste.imageFocus.y * 100}%`;
+    }
     wrap.appendChild(img);
   } else {
     wrap.classList.add("card-media-placeholder");
@@ -140,6 +143,9 @@ export function tasteRow(taste: TasteSummary, ctx: CardContext): HTMLElement {
     img.decoding = "async";
     img.width = 96;
     img.height = 96;
+    if (taste.imageFocus) {
+      img.style.objectPosition = `${taste.imageFocus.x * 100}% ${taste.imageFocus.y * 100}%`;
+    }
     thumb.appendChild(img);
   } else {
     thumb.classList.add("card-media-placeholder");

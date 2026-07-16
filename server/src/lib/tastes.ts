@@ -22,11 +22,14 @@ interface SummaryRow {
   createdAt: string;
   updatedAt: string;
   tags: string | null;
+  focusX: number | null;
+  focusY: number | null;
 }
 
 const SUMMARY_SELECT = `
   SELECT t.id, t.title, t.category_id AS categoryId, t.rating, t.status_id AS statusId,
-         t.image_file AS imageFile, t.ref_date AS refDate, t.favorite, t.published,
+         t.image_file AS imageFile, t.focus_x AS focusX, t.focus_y AS focusY,
+         t.ref_date AS refDate, t.favorite, t.published,
          t.created_at AS createdAt, t.updated_at AS updatedAt,
          (SELECT GROUP_CONCAT(tg.name, char(31)) FROM taste_tags tt
             JOIN tags tg ON tg.id = tt.tag_id WHERE tt.taste_id = t.id) AS tags
@@ -46,6 +49,8 @@ function toSummary(row: SummaryRow): TasteSummary {
       ? row.tags.split(SEP).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
       : [],
     imageFile: row.imageFile,
+    imageFocus:
+      row.focusX !== null && row.focusY !== null ? { x: row.focusX, y: row.focusY } : null,
     refDate: row.refDate,
     favorite: row.favorite === 1,
     createdAt: row.createdAt,

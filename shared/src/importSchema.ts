@@ -2,7 +2,7 @@
 // JSON import/export file format. Documented for humans (and AI generators)
 // in docs/json-import.md; keep both in sync.
 
-import type { GeoPoint, PartialDate, Rating } from "./models.js";
+import type { GeoPoint, ImageFocus, PartialDate, Rating } from "./models.js";
 
 export const IMPORT_APP = "taster";
 
@@ -42,6 +42,8 @@ export interface ImportTaste {
   sections?: ImportSection[];
   links?: ImportLink[];
   image?: ImportImage | null;
+  /** Focal point of the cover image, fractions 0..1; absent = centered. */
+  imageFocus?: ImageFocus | null;
   /** Honored when the import creates the taste (restores the original
    *  timeline); ignored on updates. SQLite UTC or ISO 8601. */
   createdAt?: string;
@@ -69,7 +71,8 @@ export type ImportErrorCode =
   | "IMAGE_TOO_LARGE"
   | "INVALID_SECTIONS"
   | "INVALID_LINKS"
-  | "INVALID_TAGS";
+  | "INVALID_TAGS"
+  | "INVALID_IMAGE_FOCUS";
 
 export interface ImportItemError {
   /** Index of the failing taste in the `tastes` array. */

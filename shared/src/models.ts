@@ -49,6 +49,12 @@ export interface GeoPoint {
   lng: number;
 }
 
+/** Focal point of the cover image, as fractions (0..1) of width and height. */
+export interface ImageFocus {
+  x: number;
+  y: number;
+}
+
 /** Lightweight list payload returned by GET /api/tastes. */
 export interface TasteSummary {
   id: string;
@@ -59,6 +65,8 @@ export interface TasteSummary {
   tags: string[];
   /** Base filename under /uploads (display variant); thumb is derivable. */
   imageFile: string | null;
+  /** Null = centered. Cards translate it to CSS object-position. */
+  imageFocus: ImageFocus | null;
   refDate: PartialDate | null;
   favorite: boolean;
   createdAt: string;
@@ -89,6 +97,7 @@ export interface TasteInput {
   tags?: string[];
   refDate?: PartialDate | null;
   location?: GeoPoint | null;
+  imageFocus?: ImageFocus | null;
   externalReviewUrl?: string | null;
   published?: boolean;
   favorite?: boolean;

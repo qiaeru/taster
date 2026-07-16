@@ -32,6 +32,7 @@ Files are UTF-8. Exports start with a byte order mark (BOM) so Windows editors d
 | `sections` | object[] | no | The written review, see below. |
 | `links` | object[] | no | Reference links, see below. |
 | `image` | object | no | Embedded illustration, see below. |
+| `imageFocus` | object | no | `{ "x": 0.5, "y": 0.2 }`, fractions of the image width and height between 0 and 1. Focal point that card thumbnails keep centered; absent means centered. |
 | `createdAt` | string | no | Written by exports. Honored when the import creates the taste (restores the original creation date); ignored on updates. |
 | `updatedAt` | string | no | Export metadata; ignored on import. |
 

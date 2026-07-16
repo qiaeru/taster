@@ -165,7 +165,7 @@
   "form.image.choose": "Choisir une image…",
   "form.image.replace": "Remplacer l’image",
   "form.image.remove": "Retirer l’image",
-  "form.image.hint": "Format JPEG, PNG, WebP, AVIF ou GIF jusqu’à 5 Mo, à choisir, glisser-déposer ou coller. L’image est recompressée automatiquement.",
+  "form.image.hint": "Format JPEG, PNG, WebP, AVIF ou GIF jusqu’à 5 Mo, à choisir, glisser-déposer ou coller. L’image est recompressée automatiquement. Cliquez sur l’aperçu pour choisir le point que les vignettes gardent au centre.",
   "form.image.error": "Image invalide ou trop lourde (5 Mo maximum).",
   "form.location": "Coordonnées GPS",
   "form.location.lat": "Latitude",

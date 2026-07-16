@@ -165,7 +165,7 @@
   "form.image.choose": "Choose an image…",
   "form.image.replace": "Replace image",
   "form.image.remove": "Remove image",
-  "form.image.hint": "JPEG, PNG, WebP, AVIF or GIF, up to 5 MB: pick a file, drag and drop, or paste. The image is recompressed automatically.",
+  "form.image.hint": "JPEG, PNG, WebP, AVIF or GIF, up to 5 MB: pick a file, drag and drop, or paste. The image is recompressed automatically. Click the preview to choose the point thumbnails keep centered.",
   "form.image.error": "Invalid image or file over 5 MB.",
   "form.location": "GPS coordinates",
   "form.location.lat": "Latitude",

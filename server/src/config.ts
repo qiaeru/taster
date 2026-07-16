@@ -19,6 +19,22 @@ function bool(name: string, defaultValue: boolean): boolean {
   return raw === "1" || raw.toLowerCase() === "true";
 }
 
+// TRUST_PROXY is the NUMBER of reverse proxies in front of the app (0 = none).
+// Passing a count to Fastify makes it read the client address that our own
+// proxy appended to X-Forwarded-For; `true` would trust the whole header,
+// which the client controls, letting an attacker spoof any IP to the per-IP
+// rate limits and login lockout. "true" is accepted as 1 for compatibility.
+function trustProxy(): number | false {
+  const raw = (process.env.TRUST_PROXY || "").trim().toLowerCase();
+  if (!raw || raw === "0" || raw === "false") return false;
+  if (raw === "true") return 1;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isInteger(n) || n < 0) {
+    throw new Error("Environment variable TRUST_PROXY must be the number of proxies (0, 1, 2...)");
+  }
+  return n === 0 ? false : n;
+}
+
 function int(name: string, defaultValue: number): number {
   const raw = process.env[name];
   if (raw === undefined || raw === "") return defaultValue;
@@ -70,7 +86,7 @@ export const config = {
   uploadsDir: resolve(DATA_DIR, "uploads"),
   sessionKey: sessionKey(SESSION_SECRET),
   cookieSecure: bool("COOKIE_SECURE", NODE_ENV === "production"),
-  trustProxy: bool("TRUST_PROXY", false),
+  trustProxy: trustProxy(),
   seedLocale: (process.env.SEED_LOCALE || "").slice(0, 2).toLowerCase() || null,
   adminReset: bool("ADMIN_RESET", false),
   publicUrl: publicUrl(),

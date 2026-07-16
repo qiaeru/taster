@@ -10,7 +10,7 @@ All configuration happens through environment variables (see [.env.example](../.
 | `SESSION_SECRET` | none | **Required for any run except `npm run dev`** (a throwaway dev key is used only there). At least 32 characters; encrypts session cookies. Generate with `openssl rand -base64 48`. Changing it signs everyone out. |
 | `PUBLIC_URL` | empty | Public URL of the site, no trailing slash (e.g. `https://tastes.example.com`). Feeds absolute URLs to OpenGraph previews, the Atom feed and the sitemap. Strongly recommended on any public instance; without it previews degrade to relative URLs and the feed falls back to the request host. |
 | `COOKIE_SECURE` | `0` (`1` when `NODE_ENV=production`) | Set to `1` when served over HTTPS so session cookies are HTTPS-only. Set to `0` explicitly for plain-HTTP LAN deployments, otherwise login silently fails. |
-| `TRUST_PROXY` | `0` | Set to `1` behind a reverse proxy so `X-Forwarded-*` headers are honored (client IPs for rate limiting, protocol for cookies). |
+| `TRUST_PROXY` | `0` | Number of reverse proxies in front of the app (`1` for the usual single Caddy/Traefik/nginx). Only that many `X-Forwarded-*` hops are trusted, so clients cannot spoof their IP to the rate limits and login lockout; `0` means no proxy. |
 | `SEED_LOCALE` | `en` | Language of the categories and statuses created on first boot: `en` or `fr`. Only read while the database is empty. |
 | `ADMIN_RESET` | `0` | Set to `1` for one boot to reset the admin account to `taster` / `changeme` (forced change), then remove it. |
 | `LOG_LEVEL` | `info` (`debug` in dev) | Pino verbosity: `fatal`, `error`, `warn`, `info`, `debug`, `trace`. |

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Environment parsing and runtime configuration.
 
-import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import "dotenv/config";
@@ -60,16 +59,6 @@ function publicUrl(): string {
   return raw.replace(/\/+$/, "");
 }
 
-function readPackageVersion(): string {
-  try {
-    const pkgPath = new URL("../package.json", import.meta.url);
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-    return pkg.version || "0.0.0";
-  } catch {
-    return "0.0.0";
-  }
-}
-
 const here = dirname(fileURLToPath(import.meta.url));
 
 export const config = {
@@ -77,10 +66,8 @@ export const config = {
   isProduction: NODE_ENV === "production",
   port: int("PORT", 3000),
   host: process.env.HOST || "0.0.0.0",
-  dataDir: DATA_DIR,
   dbPath: process.env.DB_PATH || resolve(DATA_DIR, "taster.db"),
   uploadsDir: resolve(DATA_DIR, "uploads"),
-  sessionSecret: SESSION_SECRET,
   sessionKey: sessionKey(SESSION_SECRET),
   cookieSecure: bool("COOKIE_SECURE", NODE_ENV === "production"),
   trustProxy: bool("TRUST_PROXY", false),
@@ -88,7 +75,6 @@ export const config = {
   adminReset: bool("ADMIN_RESET", false),
   publicUrl: publicUrl(),
   logLevel: process.env.LOG_LEVEL || (NODE_ENV === "production" ? "info" : "debug"),
-  version: readPackageVersion(),
   // Built client bundle; sits next to the compiled server (dist/public).
   publicDir: process.env.PUBLIC_DIR || resolve(here, "public"),
 };

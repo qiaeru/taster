@@ -15,7 +15,7 @@ const ID_PARAMS = {
   properties: { id: { type: "integer", minimum: 1 } },
 } as const;
 
-export function slugify(name: string): string {
+function slugify(name: string): string {
   const base = name
     .toLowerCase()
     .normalize("NFD")

@@ -59,7 +59,7 @@ function sniffFormat(buf: Buffer): "jpeg" | "png" | "webp" | "avif" | "gif" | nu
   return null;
 }
 
-export function thumbFileFor(imageFile: string): string {
+function thumbFileFor(imageFile: string): string {
   return imageFile.replace(/\.webp$/, ".thumb.webp");
 }
 

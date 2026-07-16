@@ -45,6 +45,12 @@ let renderToken = 0;
 // entry, so the resulting popstate is swallowed instead of re-handled.
 let restoringHistory = false;
 
+// Monotonic position of the current entry within our session history. Each
+// entry is stamped with its index (alongside the scroll offset), so the
+// unsaved-changes veto knows how far the cursor moved (Back, Forward, or a
+// multi-entry jump) and can step it back by exactly that amount.
+let currentIndex = 0;
+
 // A page with unsaved state (the taste form) can veto client-side navigation;
 // it registers a guard on mount and clears it in its teardown.
 let navGuard: (() => Promise<boolean> | boolean) | null = null;
@@ -53,14 +59,14 @@ export function setNavGuard(guard: (() => Promise<boolean> | boolean) | null): v
   navGuard = guard;
 }
 
-export async function allowLeave(): Promise<boolean> {
+async function allowLeave(): Promise<boolean> {
   return navGuard ? await navGuard() : true;
 }
 
 // Manual scroll restoration: each history entry remembers its offset when the
 // visitor navigates away, so Back lands where they left a long list.
 function saveScroll(): void {
-  history.replaceState({ scroll: window.scrollY }, "", location.href);
+  history.replaceState({ scroll: window.scrollY, idx: currentIndex }, "", location.href);
 }
 
 function restoreScroll(y: number): void {
@@ -142,7 +148,7 @@ async function render(): Promise<void> {
 async function go(href: string): Promise<void> {
   if (!(await allowLeave())) return;
   saveScroll();
-  history.pushState(null, "", href);
+  history.pushState({ idx: ++currentIndex }, "", href);
   await render();
 }
 
@@ -154,8 +160,12 @@ export function navigate(path: string, params?: Record<string, string>): void {
 // Update the query string of the current path without a page re-render
 // (the list page owns its own updates; the URL only mirrors the state).
 export function replaceQuery(params: URLSearchParams): void {
-  const q = params.size ? "?" + params.toString() : "";
-  history.replaceState(null, "", location.pathname + q);
+  // `params.toString()` instead of `params.size`: `size` only exists from
+  // Safari 17 / Chrome 113, and older engines would always strip the query.
+  const q = params.toString();
+  // Keep the existing state: replacing it with null would wipe the entry's
+  // scroll offset and history index.
+  history.replaceState(history.state, "", location.pathname + (q ? "?" + q : ""));
 }
 
 export function startRouter(): void {
@@ -169,17 +179,19 @@ export function startRouter(): void {
         restoringHistory = false;
         return;
       }
+      const state = history.state as { scroll?: number; idx?: number } | null;
       if (!(await allowLeave())) {
-        // Vetoed: the browser already moved, so step the cursor forward back
-        // to the guarded entry. Unlike re-pushing a URL, this keeps that
-        // entry's saved scroll state and does not truncate forward history.
+        // Vetoed: the browser already moved, so step the cursor back to the
+        // guarded entry by the exact distance it jumped (Back, Forward, or a
+        // multi-entry jump from the history menu). Unlike re-pushing a URL,
+        // this keeps that entry's saved scroll state and forward history.
         restoringHistory = true;
-        history.forward();
+        history.go(typeof state?.idx === "number" ? currentIndex - state.idx : 1);
         return;
       }
-      const y = (history.state as { scroll?: number } | null)?.scroll ?? 0;
+      currentIndex = state?.idx ?? 0;
       await render();
-      restoreScroll(y);
+      restoreScroll(state?.scroll ?? 0);
     })();
   });
   // Intercept internal link clicks so <a href="/taste/x"> stays a real link
@@ -195,10 +207,12 @@ export function startRouter(): void {
     void go(href);
   });
   void (async () => {
+    // Reload restore: an entry revisited after pagehide carries its offset
+    // and its history index.
+    const state = history.state as { scroll?: number; idx?: number } | null;
+    currentIndex = state?.idx ?? 0;
     await render();
-    // Reload restore: an entry revisited after pagehide carries its offset.
-    const y = (history.state as { scroll?: number } | null)?.scroll ?? 0;
-    if (y) restoreScroll(y);
+    if (state?.scroll) restoreScroll(state.scroll);
   })();
 }
 

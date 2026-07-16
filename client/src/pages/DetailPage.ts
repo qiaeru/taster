@@ -4,7 +4,7 @@
 // external-review call-to-action. Admins get a draft banner and an edit link.
 
 import type { TasteDetail } from "@taster/shared";
-import { publicApi, authApi, displayUrl, loadCatalog } from "../api.js";
+import { publicApi, authApi, displayUrl, loadCatalog, ApiError, type Catalog } from "../api.js";
 import { renderHeader } from "../components/Header.js";
 import { starDisplay } from "../components/StarRating.js";
 import { geoLink } from "../components/GeoLink.js";
@@ -30,11 +30,23 @@ export function renderDetail(
   root.appendChild(main);
 
   void (async () => {
+    const networkError = (): void => {
+      const err = document.createElement("p");
+      err.className = "error-box";
+      err.textContent = t("error.network");
+      main.appendChild(err);
+    };
+
     let detail: TasteDetail;
     try {
       detail = await publicApi.tasteDetail(id);
-    } catch {
+    } catch (err) {
       if (disposed) return;
+      // A dead server is not a missing taste: report it as such.
+      if (err instanceof ApiError && err.status === 0) {
+        networkError();
+        return;
+      }
       const box = document.createElement("div");
       box.className = "empty-state";
       const title = document.createElement("h2");
@@ -50,10 +62,19 @@ export function renderDetail(
     if (disposed) return;
     document.title = `${detail.title} · Taster`;
 
-    const [catalog, session] = await Promise.all([
-      loadCatalog(),
-      authApi.session().catch(() => ({ authenticated: false, mustChangePassword: false })),
-    ]);
+    let catalog: Catalog;
+    let session: { authenticated: boolean; mustChangePassword: boolean };
+    try {
+      [catalog, session] = await Promise.all([
+        loadCatalog(),
+        authApi.session().catch(() => ({ authenticated: false, mustChangePassword: false })),
+      ]);
+    } catch {
+      // The detail arrived but the catalog (category/status names) did not:
+      // without it the page cannot render, so fail visibly instead of blank.
+      if (!disposed) networkError();
+      return;
+    }
     if (disposed) return;
     const category = catalog.categories.find((c) => c.id === detail.categoryId);
     const status =

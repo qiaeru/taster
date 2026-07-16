@@ -47,6 +47,7 @@ function field(labelText: string, input: HTMLElement, hint?: string): HTMLElemen
 
 function passwordErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
+    if (err.status === 0) return t("error.network");
     const key = `password.error.${err.code}`;
     const translated = t(key);
     if (translated !== key) return translated;
@@ -98,7 +99,9 @@ function renderLogin(main: HTMLElement): void {
     } catch (err) {
       submit.disabled = false;
       error.hidden = false;
-      if (err instanceof ApiError && err.status === 423) error.textContent = t("login.error.locked");
+      if (err instanceof ApiError && err.status === 0) error.textContent = t("error.network");
+      else if (err instanceof ApiError && err.status === 423)
+        error.textContent = t("login.error.locked");
       else if (err instanceof ApiError && err.status === 429)
         error.textContent = t("login.error.rateLimited");
       else error.textContent = t("login.error.invalid");
@@ -699,19 +702,28 @@ function renderDashboard(main: HTMLElement): void {
 
   const nav = document.createElement("div");
   nav.className = "tab-nav";
-  nav.setAttribute("role", "tablist");
+  // The tablist only wraps the tabs: ARIA forbids other children, and the
+  // logout button is an action, not a view, so it sits next to it in the bar.
+  const tablist = document.createElement("div");
+  tablist.className = "tab-list";
+  tablist.setAttribute("role", "tablist");
+  tablist.setAttribute("aria-label", t("admin.title"));
   const body = document.createElement("div");
   body.className = "tab-body";
+  body.setAttribute("role", "tabpanel");
+  body.id = "admin-panel";
 
   let active = "tastes";
   const paintNav = (): void => {
-    nav.innerHTML = "";
+    tablist.innerHTML = "";
     for (const tab of tabs) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "tab-btn";
+      btn.id = `admin-tab-${tab.key}`;
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", String(tab.key === active));
+      btn.setAttribute("aria-controls", body.id);
       btn.dataset.active = String(tab.key === active);
       btn.textContent = tab.label;
       btn.addEventListener("click", () => {
@@ -720,23 +732,23 @@ function renderDashboard(main: HTMLElement): void {
         body.innerHTML = "";
         tab.render(body);
       });
-      nav.appendChild(btn);
+      tablist.appendChild(btn);
     }
-
-    // Sign out is an action, not a view: same look as the tabs, pushed to the
-    // right edge of the bar.
-    const logout = document.createElement("button");
-    logout.type = "button";
-    logout.className = "tab-btn tab-logout";
-    logout.appendChild(icon("arrow-right-start-on-rectangle", "icon icon-sm"));
-    logout.appendChild(document.createTextNode(t("admin.logout")));
-    logout.addEventListener("click", async () => {
-      await authApi.logout().catch(() => undefined);
-      navigate("/");
-    });
-    nav.appendChild(logout);
+    body.setAttribute("aria-labelledby", `admin-tab-${active}`);
   };
   paintNav();
+
+  const logout = document.createElement("button");
+  logout.type = "button";
+  logout.className = "tab-btn tab-logout";
+  logout.appendChild(icon("arrow-right-start-on-rectangle", "icon icon-sm"));
+  logout.appendChild(document.createTextNode(t("admin.logout")));
+  logout.addEventListener("click", async () => {
+    await authApi.logout().catch(() => undefined);
+    navigate("/");
+  });
+
+  nav.append(tablist, logout);
   main.append(nav, body);
   tabs[0].render(body);
 }

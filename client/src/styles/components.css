@@ -1389,6 +1389,12 @@
     gap: 0.25rem;
     border-bottom: 1px solid var(--border);
     margin-bottom: 1.25rem;
+  }
+  /* Tabs sub-container inside .tab-nav; lets the tablist role wrap only the
+     tabs while the logout button stays a sibling in the same bar. */
+  .tab-list {
+    display: flex;
+    gap: 0.25rem;
     overflow-x: auto;
   }
   .tab-btn {

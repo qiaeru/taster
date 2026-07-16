@@ -25,10 +25,11 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["content-type"] = "application/json";
-  if (method !== "GET" && method !== "HEAD") {
+  const mutating = method !== "GET" && method !== "HEAD";
+  if (mutating) {
     headers["x-csrf-token"] = await getCsrfToken();
   }
   let res: Response;
@@ -40,6 +41,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     });
   } catch {
     throw new ApiError(0, "NETWORK");
+  }
+  // The cached CSRF token goes stale whenever the session secret changes
+  // (logout/login without a reload, server restart). The app never returns
+  // 403 for anything else on /api, so refresh the token and retry once.
+  if (res.status === 403 && mutating && !retried) {
+    invalidateCsrf();
+    return request<T>(method, path, body, true);
   }
   if (res.status === 204) return undefined as T;
   let data: { error?: string; details?: unknown } | null = null;
@@ -61,8 +69,7 @@ async function getCsrfToken(): Promise<string> {
   csrfToken = token;
   return token;
 }
-// A 403 CSRF failure after a server restart just needs a fresh token.
-export function invalidateCsrf(): void {
+function invalidateCsrf(): void {
   csrfToken = null;
 }
 
@@ -118,7 +125,12 @@ export const authApi = {
       username,
       password,
     }),
-  logout: () => api.post<{ ok: boolean }>("/api/auth/logout"),
+  logout: () =>
+    api.post<{ ok: boolean }>("/api/auth/logout").then((r) => {
+      // Logging out replaces the session, which voids the cached CSRF token.
+      invalidateCsrf();
+      return r;
+    }),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post<{ ok: boolean }>("/api/auth/change-password", { currentPassword, newPassword }),
 };
@@ -130,13 +142,21 @@ export const adminApi = {
     api.put<TasteDetail>(`/api/admin/tastes/${id}`, input),
   deleteTaste: (id: string) => api.delete<{ ok: boolean }>(`/api/admin/tastes/${id}`),
   uploadImage: async (id: string, blob: Blob, filename: string) => {
-    const form = new FormData();
-    form.append("file", blob, filename);
-    const res = await fetch(`/api/admin/tastes/${id}/image`, {
-      method: "PUT",
-      headers: { "x-csrf-token": await getCsrfToken() },
-      body: form,
-    });
+    const send = async () => {
+      const form = new FormData();
+      form.append("file", blob, filename);
+      return fetch(`/api/admin/tastes/${id}/image`, {
+        method: "PUT",
+        headers: { "x-csrf-token": await getCsrfToken() },
+        body: form,
+      });
+    };
+    let res = await send();
+    if (res.status === 403) {
+      // Stale CSRF token (see request()): refresh and retry once.
+      invalidateCsrf();
+      res = await send();
+    }
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new ApiError(res.status, data?.error || "REQUEST_FAILED");
     return data as { imageFile: string };

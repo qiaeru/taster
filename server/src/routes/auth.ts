@@ -30,9 +30,10 @@ function lockedUntil(ip: string, now: number): number | null {
   return entry.count >= LOCKOUT_THRESHOLD ? entry.resetAt : null;
 }
 
-// Matches POLICY.minLength: change-password enforces the full policy on the
-// new password anyway, the schema just fails cheap and early.
-const newPasswordSchema = { type: "string", minLength: 12, maxLength: 200 };
+// Only bound the size here: the full policy (including minimum length) runs
+// in validatePassword so a short password gets its specific PASSWORD_TOO_SHORT
+// code, which the client translates, instead of an opaque schema failure.
+const newPasswordSchema = { type: "string", minLength: 1, maxLength: 200 };
 // Login and `currentPassword` accept any non-empty value: the strength policy
 // only applies to new passwords, and the seeded "changeme" must authenticate.
 const currentPasswordSchema = { type: "string", minLength: 1, maxLength: 200 };

@@ -198,32 +198,29 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
   }
   main.appendChild(loading);
 
-  loadCatalog()
-    .then((data) => {
-      if (disposed) return;
-      catalog = data;
-      main.innerHTML = "";
-      build();
-    })
-    .catch(() => {
-      if (disposed) return;
-      main.innerHTML = "";
-      const err = document.createElement("p");
-      err.className = "error-box";
-      err.textContent = t("error.network");
-      const retry = document.createElement("button");
-      retry.type = "button";
-      retry.className = "btn";
-      retry.textContent = t("action.retry");
-      retry.addEventListener("click", () => {
-        loadCatalog(true).then((data) => {
-          catalog = data;
-          main.innerHTML = "";
-          build();
-        });
+  const boot = (force: boolean): void => {
+    loadCatalog(force)
+      .then((data) => {
+        if (disposed) return;
+        catalog = data;
+        main.innerHTML = "";
+        build();
+      })
+      .catch(() => {
+        if (disposed) return;
+        main.innerHTML = "";
+        const err = document.createElement("p");
+        err.className = "error-box";
+        err.textContent = t("error.network");
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "btn";
+        retry.textContent = t("action.retry");
+        retry.addEventListener("click", () => boot(true));
+        main.append(err, retry);
       });
-      main.append(err, retry);
-    });
+  };
+  boot(false);
 
   // ---- static skeleton (built once; results re-render on state change) ----
   let filterBar: HTMLElement;
@@ -246,7 +243,11 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     search.value = state.q;
     search.addEventListener("input", () => {
       state.q = search.value;
-      update();
+      // Debounced: update() rebuilds the whole result grid and mirrors the
+      // state into the URL, and Safari throttles history.replaceState to
+      // about 100 calls per 30 s; a per-keystroke call would pay both costs.
+      window.clearTimeout(searchDebounce);
+      searchDebounce = window.setTimeout(update, 150);
     });
     searchWrap.appendChild(search);
     toolbar.appendChild(searchWrap);
@@ -669,6 +670,8 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     }
   }
 
+  let searchDebounce = 0;
+
   function update(): void {
     writeState(state);
     renderCategoryChips();
@@ -681,6 +684,9 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
 
   return () => {
     disposed = true;
+    // A pending debounced update() would otherwise fire after navigation and
+    // rewrite the next page's URL through replaceQuery.
+    window.clearTimeout(searchDebounce);
     document.removeEventListener("keydown", onSlashKey);
     window.removeEventListener("scroll", onScroll);
   };

@@ -92,7 +92,7 @@ export function renderTasteForm(
   main.className = "form-page";
   root.appendChild(main);
 
-  void (async () => {
+  const boot = async (): Promise<void> => {
     const session = await authApi.session().catch(() => null);
     if (!session?.authenticated || session.mustChangePassword) {
       navigate("/admin");
@@ -522,10 +522,11 @@ export function renderTasteForm(
       } catch (err) {
         save.disabled = false;
         errorBox.hidden = false;
-        if (err instanceof ApiError) {
+        if (err instanceof ApiError && err.status !== 0) {
           if (err.code === "INVALID_URL") errorBox.textContent = t("form.error.INVALID_URL");
           else if (err.code === "INVALID_LOCATION")
             errorBox.textContent = t("form.location.invalid");
+          else if (err.code === "INVALID_DATE") errorBox.textContent = t("form.date.invalid");
           else if (err.code === "TITLE_REQUIRED") errorBox.textContent = t("form.title.required");
           else errorBox.textContent = t("form.error.generic");
         } else {
@@ -535,7 +536,27 @@ export function renderTasteForm(
     });
 
     title.focus();
-  })();
+  };
+
+  // The categories request is not caught inside boot(): a transient network
+  // failure while opening the form must show a retry, not a blank page.
+  const start = (): void => {
+    main.innerHTML = "";
+    boot().catch(() => {
+      if (disposed) return;
+      main.innerHTML = "";
+      const err = document.createElement("p");
+      err.className = "error-box";
+      err.textContent = t("error.network");
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "btn";
+      retry.textContent = t("action.retry");
+      retry.addEventListener("click", start);
+      main.append(err, retry);
+    });
+  };
+  start();
 
   return () => {
     disposed = true;

@@ -158,6 +158,7 @@
   "form.date.day": "Jour",
   "form.date.none": "—",
   "form.date.hint": "Année seule, année et mois ou encore date complète, correspondant à la date de sortie d’un média ou à la date de découverte d’un restaurant.",
+  "form.date.invalid": "Date invalide : vérifiez le jour, le mois et l’année.",
   "form.image": "Image d’illustration",
   "form.image.choose": "Choisir une image…",
   "form.image.replace": "Remplacer l’image",

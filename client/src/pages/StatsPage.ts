@@ -41,7 +41,9 @@ function barRow(
   track.className = "bar-track";
   const fill = document.createElement("div");
   fill.className = "bar-fill";
-  fill.style.width = max > 0 ? `${Math.max(2, Math.round((count / max) * 100))}%` : "0";
+  // A zero count gets a truly empty bar; the 2% floor only keeps small
+  // non-zero counts visible.
+  fill.style.width = count > 0 && max > 0 ? `${Math.max(2, Math.round((count / max) * 100))}%` : "0";
   if (color) fill.style.setProperty("--bar-color", color);
   track.appendChild(fill);
   row.appendChild(track);
@@ -78,8 +80,32 @@ export function renderStats(root: HTMLElement): () => void {
   main.appendChild(h1);
   document.title = `${t("stats.title")} · Taster`;
 
-  void loadCatalog().then((catalog: Catalog) => {
-    if (disposed) return;
+  const boot = (force: boolean): void => {
+    loadCatalog(force)
+      .then((catalog: Catalog) => {
+        if (disposed) return;
+        build(catalog);
+      })
+      .catch(() => {
+        if (disposed) return;
+        const err = document.createElement("p");
+        err.className = "error-box";
+        err.textContent = t("error.network");
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "btn";
+        retry.textContent = t("action.retry");
+        retry.addEventListener("click", () => {
+          err.remove();
+          retry.remove();
+          boot(true);
+        });
+        main.append(err, retry);
+      });
+  };
+  boot(false);
+
+  function build(catalog: Catalog): void {
     const { tastes, categories } = catalog;
 
     if (!tastes.length) {
@@ -144,7 +170,7 @@ export function renderStats(root: HTMLElement): () => void {
         tagsSection.body.appendChild(barRow(name, n, maxTag, `/?tags=${encodeURIComponent(name)}`));
       main.appendChild(tagsSection.wrap);
     }
-  });
+  }
 
   return () => {
     disposed = true;

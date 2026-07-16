@@ -84,6 +84,11 @@ export function datePrecisionPicker(initial: string | null): DatePickerWidget {
 
   yearInput.addEventListener("input", () => {
     year = yearInput.value.trim();
+    // Same clamp as the month handler: Feb 29 must not survive a switch to
+    // a non-leap year (the server would reject the resulting date).
+    if (day && month && Number(day) > new Date(Number(year) || 2000, Number(month), 0).getDate()) {
+      day = "";
+    }
     fillDays();
   });
 

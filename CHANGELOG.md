@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Reference links can be reordered with up and down arrows in the edit form.
+- The tag field accepts several tags at once, separated by commas, and a hint under the field says so.
+- The compact view shows each entry's date when sorting by recent additions or by date.
+
+### Changed
+
+- Tags display in alphabetical order on cards, detail pages and in the edit form.
+- Saving a tag under a new casing (for example "aventure" replacing "Aventure") renames it for every taste using it, instead of silently keeping the old spelling.
+
+### Fixed
+
+- JSON exports start with a UTF-8 byte order mark so Windows editors display accents correctly; the import accepts files with or without it.
+- Cards keep a uniform 3:2 image height in Chromium-based browsers, matching Firefox.
+- The first visible images load at high priority instead of popping in late as one batch over HTTP/1.1.
+- Buttons center their content; the password change and login buttons no longer stretch full width with a left-aligned label.
+
 ## [0.1.0] - 2026-07-16
 
 - Initial release.

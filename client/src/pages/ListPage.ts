@@ -13,7 +13,7 @@ import { icon } from "../components/Icon.js";
 import { selectMenu } from "../components/Select.js";
 import { tip } from "../components/Tooltip.js";
 import { t } from "../i18n/index.js";
-import { searchFold } from "../lib/format.js";
+import { formatDateTime, formatPartialDate, searchFold } from "../lib/format.js";
 import { rememberListOrder } from "../lib/listOrder.js";
 import { navigate, replaceQuery } from "../router.js";
 
@@ -33,6 +33,10 @@ interface ListState {
 }
 
 const VIEW_KEY = "taster:view";
+
+// First cards load eagerly at high priority: over HTTP/1.1 a lazy grid drains
+// ~6 thumbs at a time and the whole fold pops in as one late batch.
+const EAGER_CARDS = 8;
 
 function readState(params: URLSearchParams): ListState {
   const sort = params.get("sort") as SortKey | null;
@@ -626,6 +630,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       for (const group of groups) group.items = sortTastes(group.items, rowSort);
       rememberListOrder(groups.flatMap((group) => group.items.map((x) => x.id)));
 
+      let eagerLeft = EAGER_CARDS;
       for (const group of groups) {
         if (!group.items.length) continue;
         const section = document.createElement("section");
@@ -647,7 +652,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
         const grid = document.createElement("div");
         grid.className = "card-grid card-grid-tier";
         for (const taste of group.items) {
-          grid.appendChild(tasteCard(taste, ctx));
+          grid.appendChild(tasteCard(taste, ctx, eagerLeft-- > 0));
         }
         section.appendChild(grid);
         results.appendChild(section);
@@ -658,6 +663,11 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     const sorted = sortTastes(filtered, state.sort);
     rememberListOrder(sorted.map((x) => x.id));
     if (state.view === "compact") {
+      // Show the date driving the active sort, so the order stays legible;
+      // title and rating sorts read on their own.
+      if (state.sort === "recent") ctx.rowDate = (x) => formatDateTime(x.createdAt);
+      else if (state.sort === "date")
+        ctx.rowDate = (x) => (x.refDate ? formatPartialDate(x.refDate) : null);
       const listEl = document.createElement("div");
       listEl.className = "row-list";
       for (const taste of sorted) listEl.appendChild(tasteRow(taste, ctx));
@@ -665,7 +675,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     } else {
       const grid = document.createElement("div");
       grid.className = "card-grid";
-      for (const taste of sorted) grid.appendChild(tasteCard(taste, ctx));
+      sorted.forEach((taste, i) => grid.appendChild(tasteCard(taste, ctx, i < EAGER_CARDS)));
       results.appendChild(grid);
     }
   }

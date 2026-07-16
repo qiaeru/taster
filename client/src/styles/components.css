@@ -67,6 +67,9 @@
   .btn {
     display: inline-flex;
     align-items: center;
+    /* Centered content: stretched buttons (auth forms) otherwise pin their
+       icon and label to the left edge. */
+    justify-content: center;
     gap: 0.4rem;
     padding: 0.55rem 1rem;
     border-radius: 0.625rem;
@@ -578,6 +581,10 @@
   .card-media {
     position: relative;
     aspect-ratio: 3 / 2;
+    /* Also disables the flex-item automatic minimum size: without it Chromium
+       lets a portrait thumb's intrinsic height stretch the box past 3:2 once
+       loaded, while Firefox keeps the ratio (uneven card heights). */
+    overflow: hidden;
     background: color-mix(in srgb, var(--cat-color, var(--accent)) 14%, var(--bg-sunken));
   }
   .card-media img {
@@ -723,6 +730,10 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+  .row-date {
+    font-size: 0.78rem;
+    white-space: nowrap;
   }
   .row-right {
     flex: none;
@@ -1146,6 +1157,10 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+  /* Column flex stretches children; keep submit buttons at their text width. */
+  .auth-box .btn {
+    align-self: flex-start;
   }
   .field {
     display: flex;

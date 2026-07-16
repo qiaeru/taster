@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 // The list card, in two densities: rich card (grid/tiers) and compact row.
 // Cards load the thumb variant only; width/height attributes prevent layout
-// shift and loading=lazy keeps long lists cheap.
+// shift and loading=lazy keeps long lists cheap, except the first above-the-
+// fold cards which load eagerly at high priority so the top of the page does
+// not pop in as one late batch (HTTP/1.1 queues thumbs ~6 at a time).
 
 import type { Category, Status, TasteSummary } from "@taster/shared";
 import { thumbUrl } from "../api.js";
@@ -15,6 +17,8 @@ export interface CardContext {
   statuses: Map<number, Status>;
   /** Extra badge for the admin table ("draft"). */
   draft?: boolean;
+  /** Compact rows: date to display for the active sort (null = none). */
+  rowDate?: (taste: TasteSummary) => string | null;
 }
 
 function categoryBadge(category: Category | undefined): HTMLElement {
@@ -28,7 +32,7 @@ function categoryBadge(category: Category | undefined): HTMLElement {
   return badge;
 }
 
-function media(taste: TasteSummary, category: Category | undefined): HTMLElement {
+function media(taste: TasteSummary, category: Category | undefined, eager: boolean): HTMLElement {
   const wrap = document.createElement("div");
   wrap.className = "card-media";
   if (category) wrap.style.setProperty("--cat-color", category.color);
@@ -36,7 +40,8 @@ function media(taste: TasteSummary, category: Category | undefined): HTMLElement
     const img = document.createElement("img");
     img.src = thumbUrl(taste.imageFile);
     img.alt = "";
-    img.loading = "lazy";
+    img.loading = eager ? "eager" : "lazy";
+    if (eager) img.setAttribute("fetchpriority", "high");
     img.decoding = "async";
     img.width = 480;
     img.height = 320;
@@ -58,7 +63,7 @@ function media(taste: TasteSummary, category: Category | undefined): HTMLElement
   return wrap;
 }
 
-export function tasteCard(taste: TasteSummary, ctx: CardContext): HTMLElement {
+export function tasteCard(taste: TasteSummary, ctx: CardContext, eager = false): HTMLElement {
   const category = ctx.categories.get(taste.categoryId);
   const status = taste.statusId !== null ? ctx.statuses.get(taste.statusId) : undefined;
 
@@ -66,7 +71,7 @@ export function tasteCard(taste: TasteSummary, ctx: CardContext): HTMLElement {
   card.className = "taste-card";
   card.href = `/taste/${taste.id}`;
 
-  card.appendChild(media(taste, category));
+  card.appendChild(media(taste, category, eager));
 
   const body = document.createElement("div");
   body.className = "card-body";
@@ -163,6 +168,13 @@ export function tasteRow(taste: TasteSummary, ctx: CardContext): HTMLElement {
     pill.className = "chip chip-status";
     pill.textContent = status.name;
     meta.appendChild(pill);
+  }
+  const dateText = ctx.rowDate?.(taste);
+  if (dateText) {
+    const date = document.createElement("span");
+    date.className = "muted row-date";
+    date.textContent = dateText;
+    meta.appendChild(date);
   }
   main.appendChild(meta);
   row.appendChild(main);

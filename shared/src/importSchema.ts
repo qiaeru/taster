@@ -42,8 +42,10 @@ export interface ImportTaste {
   sections?: ImportSection[];
   links?: ImportLink[];
   image?: ImportImage | null;
-  /** Export metadata; ignored on import. */
+  /** Honored when the import creates the taste (restores the original
+   *  timeline); ignored on updates. SQLite UTC or ISO 8601. */
   createdAt?: string;
+  /** Export metadata; ignored on import. */
   updatedAt?: string;
 }
 

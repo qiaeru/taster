@@ -12,7 +12,7 @@ Taster can import tastes from a JSON file (admin, Import and export tab) and exp
 }
 ```
 
-All three keys are required. `tastes` contains one object per taste. Import is per-item: valid entries are saved, invalid ones are reported with their index and an error code, and neither blocks the other.
+All three keys are required. `tastes` contains one object per taste. Import is per-item: valid entries are saved, invalid ones are reported with their index and an error code, and neither blocks the other. When an imported taste is created (not updated) and carries the `createdAt` field that exports write, that creation date is restored, so a full export then import on a fresh instance keeps the original timeline (default sort order, Atom feed dates).
 
 ## Taste fields
 
@@ -32,7 +32,8 @@ All three keys are required. `tastes` contains one object per taste. Import is p
 | `sections` | object[] | no | The written review, see below. |
 | `links` | object[] | no | Reference links, see below. |
 | `image` | object | no | Embedded illustration, see below. |
-| `createdAt`, `updatedAt` | string | no | Export metadata; ignored on import. |
+| `createdAt` | string | no | Written by exports. Honored when the import creates the taste (restores the original creation date); ignored on updates. |
+| `updatedAt` | string | no | Export metadata; ignored on import. |
 
 ### Sections
 

@@ -238,31 +238,37 @@ function gcOrphanTags(): void {
   getDb().exec("DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM taste_tags)");
 }
 
-export const createTaste = transaction((clean: CleanTaste, id?: string): string => {
-  const db = getDb();
-  const tasteId = id ?? randomUUID();
-  db.prepare(
-    `INSERT INTO tastes (id, title, category_id, rating, status_id, ref_date, lat, lng,
-                         external_review_url, published, favorite)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    tasteId,
-    clean.title,
-    clean.categoryId,
-    clean.rating,
-    clean.statusId,
-    clean.refDate,
-    clean.lat,
-    clean.lng,
-    clean.externalReviewUrl,
-    clean.published ? 1 : 0,
-    clean.favorite ? 1 : 0
-  );
-  writeRelations(tasteId, clean);
-  gcOrphanTags();
-  bumpDataRevision();
-  return tasteId;
-});
+// `createdAt` (SQLite UTC "YYYY-MM-DD HH:MM:SS") lets the JSON import restore
+// a taste's original creation date, so a full export/import keeps the
+// "recent" sort order and does not re-announce the catalog in the Atom feed.
+export const createTaste = transaction(
+  (clean: CleanTaste, id?: string, createdAt?: string): string => {
+    const db = getDb();
+    const tasteId = id ?? randomUUID();
+    db.prepare(
+      `INSERT INTO tastes (id, title, category_id, rating, status_id, ref_date, lat, lng,
+                           external_review_url, published, favorite, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
+    ).run(
+      tasteId,
+      clean.title,
+      clean.categoryId,
+      clean.rating,
+      clean.statusId,
+      clean.refDate,
+      clean.lat,
+      clean.lng,
+      clean.externalReviewUrl,
+      clean.published ? 1 : 0,
+      clean.favorite ? 1 : 0,
+      createdAt ?? null
+    );
+    writeRelations(tasteId, clean);
+    gcOrphanTags();
+    bumpDataRevision();
+    return tasteId;
+  }
+);
 
 export const updateTaste = transaction((tasteId: string, clean: CleanTaste): boolean => {
   const db = getDb();

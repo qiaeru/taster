@@ -146,6 +146,18 @@ async function decodeImportImage(image: ImportTaste["image"]): Promise<string | 
   return storeImage(buf);
 }
 
+// Exports carry createdAt; honoring it on create makes a full export/import
+// restore lossless (stable "recent" sort, no feed re-announcement). Lenient:
+// a missing or unparseable value falls back to "now", never an error.
+function normalizeCreatedAt(raw: unknown): string | undefined {
+  if (typeof raw !== "string" || !raw.trim()) return undefined;
+  // Export format is SQLite UTC "YYYY-MM-DD HH:MM:SS"; also accept ISO 8601.
+  const iso = raw.includes("T") ? raw : raw.trim().replace(" ", "T") + "Z";
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return undefined;
+  return new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+}
+
 export async function importTastes(payload: unknown): Promise<ImportResult> {
   if (
     typeof payload !== "object" ||
@@ -227,7 +239,8 @@ export async function importTastes(payload: unknown): Promise<ImportResult> {
         // same file stay idempotent.
         const id = createTaste(
           clean,
-          typeof item.id === "string" && /^[0-9a-fA-F-]{36}$/.test(item.id) ? item.id : undefined
+          typeof item.id === "string" && /^[0-9a-fA-F-]{36}$/.test(item.id) ? item.id : undefined,
+          normalizeCreatedAt(item.createdAt)
         );
         if (imageFile) setTasteImage(id, imageFile);
         imported++;

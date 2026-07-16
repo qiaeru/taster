@@ -40,7 +40,11 @@ function toSummary(row: SummaryRow): TasteSummary {
     categoryId: row.categoryId,
     rating: (row.rating as Rating) ?? null,
     statusId: row.statusId,
-    tags: row.tags ? row.tags.split(SEP) : [],
+    // Alphabetical: taste_tags iterates in tag-creation order, which reads as
+    // random on cards; a stable order also keeps the edit form predictable.
+    tags: row.tags
+      ? row.tags.split(SEP).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+      : [],
     imageFile: row.imageFile,
     refDate: row.refDate,
     favorite: row.favorite === 1,

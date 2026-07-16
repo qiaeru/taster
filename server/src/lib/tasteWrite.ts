@@ -223,8 +223,10 @@ function writeRelations(tasteId: string, clean: CleanTaste): void {
   clean.links.forEach((link, i) => insertLink.run(tasteId, link.label, link.url, i));
 
   db.prepare("DELETE FROM taste_tags WHERE taste_id = ?").run(tasteId);
+  // COLLATE NOCASE unique: on a case-only respelling ("Aventure" -> "aventure")
+  // the submitted spelling renames the shared tag for every taste using it.
   const upsertTag = db.prepare(
-    "INSERT INTO tags (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET name = name RETURNING id"
+    "INSERT INTO tags (name) VALUES (?) ON CONFLICT(name) DO UPDATE SET name = excluded.name RETURNING id"
   );
   const linkTag = db.prepare("INSERT INTO taste_tags (taste_id, tag_id) VALUES (?, ?)");
   for (const tag of clean.tags) {

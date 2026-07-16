@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Tag input: chips + free text with suggestions from the existing tags.
-// Enter or comma commits a chip, Backspace on an empty input removes the
-// last one.
+// Enter or comma commits a chip, commas split a pasted "a, b, c" into one
+// chip each, Backspace on an empty input removes the last one.
 
 import { icon } from "./Icon.js";
 import { t } from "../i18n/index.js";
@@ -60,9 +60,11 @@ export function tagInput(initial: string[], suggestions: string[]): TagInputWidg
   };
 
   const commit = (): void => {
-    const value = input.value.replace(/,/g, "").trim();
-    if (!value) return;
-    if (!tags.some((x) => x.toLowerCase() === value.toLowerCase())) tags.push(value);
+    for (const part of input.value.split(",")) {
+      const value = part.trim();
+      if (!value) continue;
+      if (!tags.some((x) => x.toLowerCase() === value.toLowerCase())) tags.push(value);
+    }
     input.value = "";
     paint();
   };

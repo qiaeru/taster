@@ -168,7 +168,7 @@ export function renderTasteForm(
 
     // Tags
     const tags = tagInput(detail?.tags ?? [], existingTags.map((x) => x.name));
-    form.appendChild(field(t("form.tags"), tags.el));
+    form.appendChild(field(t("form.tags"), tags.el, t("form.tags.hint")));
 
     // Date
     const date = datePrecisionPicker(detail?.refDate ?? null);
@@ -360,6 +360,26 @@ export function renderTasteForm(
         url.setAttribute("aria-label", t("form.links.url"));
         url.value = link.url;
         url.addEventListener("input", () => (link.url = url.value));
+        // Saving persists the array order as the links' sort_order.
+        const mkTool = (name: string, text: string, onClick: () => void, disabled = false) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "icon-btn";
+          tip(btn, text);
+          btn.setAttribute("aria-label", text);
+          btn.disabled = disabled;
+          btn.appendChild(icon(name, "icon icon-sm"));
+          btn.addEventListener("click", onClick);
+          return btn;
+        };
+        const up = mkTool("arrow-up", t("form.links.moveUp"), () => {
+          [links[index - 1], links[index]] = [links[index], links[index - 1]];
+          paintLinks();
+        }, index === 0);
+        const down = mkTool("arrow-down", t("form.links.moveDown"), () => {
+          [links[index], links[index + 1]] = [links[index + 1], links[index]];
+          paintLinks();
+        }, index === links.length - 1);
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "icon-btn btn-danger";
@@ -370,7 +390,7 @@ export function renderTasteForm(
           links.splice(index, 1);
           paintLinks();
         });
-        row.append(label, url, remove);
+        row.append(label, url, up, down, remove);
         linksList.appendChild(row);
       });
     };

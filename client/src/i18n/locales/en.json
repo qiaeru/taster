@@ -170,7 +170,7 @@
   "form.location.lat": "Latitude",
   "form.location.lng": "Longitude",
   "form.location.hint": "The coordinates of a restaurant's address, for example. Leave empty if not relevant.",
-  "form.location.invalid": "Latitude must be between -90 and 90 and longitude between -180 and 180.",
+  "form.location.invalid": "Latitude must be between -90 and 90 and longitude between -180 and 180. Fill both fields or neither.",
   "form.review": "Review",
   "form.review.mode.sections": "Written review",
   "form.review.mode.external": "Link to an external review",

@@ -15,7 +15,7 @@ import {
   TasteValidationError,
 } from "../lib/tasteWrite.js";
 import { storeImage, deleteImageFiles, ImageValidationError, MAX_IMAGE_BYTES } from "../lib/images.js";
-import { getDb } from "../db/index.js";
+import { getDb, bumpDataRevision } from "../db/index.js";
 
 const UUID_PARAMS = {
   type: "object",
@@ -71,6 +71,49 @@ export default async function adminTasteRoutes(app: FastifyInstance) {
     if (!deleteTaste(id)) return reply.code(404).send({ error: "NOT_FOUND" });
     return { ok: true };
   });
+
+  // Bulk actions from the admin list: publish/unpublish flip a flag in one
+  // statement; delete goes through deleteTaste per id so image files and
+  // orphan tags are cleaned up exactly like a single delete.
+  app.post(
+    "/tastes/bulk",
+    {
+      schema: {
+        body: {
+          type: "object",
+          required: ["action", "ids"],
+          additionalProperties: false,
+          properties: {
+            action: { type: "string", enum: ["publish", "unpublish", "delete"] },
+            ids: {
+              type: "array",
+              minItems: 1,
+              maxItems: 500,
+              items: { type: "string", pattern: "^[0-9a-fA-F-]{36}$" },
+            },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const { action, ids } = request.body as { action: string; ids: string[] };
+      if (action === "delete") {
+        let affected = 0;
+        for (const id of ids) if (deleteTaste(id)) affected++;
+        return { affected };
+      }
+      const db = getDb();
+      const placeholders = ids.map(() => "?").join(",");
+      const info = db
+        .prepare(
+          `UPDATE tastes SET published = ?, updated_at = datetime('now')
+           WHERE id IN (${placeholders})`
+        )
+        .run(action === "publish" ? 1 : 0, ...ids);
+      bumpDataRevision();
+      return { affected: info.changes };
+    }
+  );
 
   app.put("/tastes/:id/image", { schema: { params: UUID_PARAMS } }, async (request, reply) => {
     const { id } = request.params as { id: string };

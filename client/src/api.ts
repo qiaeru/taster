@@ -141,6 +141,8 @@ export const adminApi = {
   updateTaste: (id: string, input: TasteInput) =>
     api.put<TasteDetail>(`/api/admin/tastes/${id}`, input),
   deleteTaste: (id: string) => api.delete<{ ok: boolean }>(`/api/admin/tastes/${id}`),
+  bulkTastes: (action: "publish" | "unpublish" | "delete", ids: string[]) =>
+    api.post<{ affected: number }>("/api/admin/tastes/bulk", { action, ids }),
   uploadImage: async (id: string, blob: Blob, filename: string) => {
     const send = async () => {
       const form = new FormData();

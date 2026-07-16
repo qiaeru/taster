@@ -207,30 +207,128 @@ async function renderTastesTab(body: HTMLElement): Promise<void> {
   toolbar.appendChild(filter);
   body.appendChild(toolbar);
 
+  // Bulk actions: the bar appears as soon as one row is checked.
+  const selected = new Set<string>();
+  const bulkBar = document.createElement("div");
+  bulkBar.className = "bulk-bar";
+  bulkBar.hidden = true;
+  body.appendChild(bulkBar);
+
   const listEl = document.createElement("div");
   listEl.className = "row-list admin-taste-list";
   body.appendChild(listEl);
 
-  const paint = (): void => {
+  const visibleTastes = (): AdminTasteSummary[] => {
     const fold = searchFold(filter.value.trim());
-    const visible = fold
+    return fold
       ? tastes.filter((x) => searchFold(x.title + " " + x.tags.join(" ")).includes(fold))
       : tastes;
+  };
+
+  const paintBulkBar = (): void => {
+    bulkBar.hidden = selected.size === 0;
+    if (bulkBar.hidden) return;
+    bulkBar.innerHTML = "";
+    const count = document.createElement("span");
+    count.textContent = t("admin.bulk.selected", { count: selected.size });
+    bulkBar.appendChild(count);
+
+    const visible = visibleTastes();
+    const allSelected = visible.length > 0 && visible.every((x) => selected.has(x.id));
+    const toggleAll = document.createElement("button");
+    toggleAll.type = "button";
+    toggleAll.className = "btn";
+    toggleAll.textContent = allSelected ? t("admin.bulk.clear") : t("admin.bulk.selectAll");
+    toggleAll.addEventListener("click", () => {
+      if (allSelected) selected.clear();
+      else for (const taste of visible) selected.add(taste.id);
+      paint();
+    });
+    bulkBar.appendChild(toggleAll);
+
+    const run = async (action: "publish" | "unpublish" | "delete"): Promise<void> => {
+      const ids = [...selected];
+      if (action === "delete") {
+        if (!(await confirmDialog(t("admin.bulk.deleteConfirm", { count: ids.length })))) return;
+      }
+      try {
+        const { affected } = await adminApi.bulkTastes(action, ids);
+        if (action === "delete") {
+          for (const id of ids) {
+            const index = tastes.findIndex((x) => x.id === id);
+            if (index !== -1) tastes.splice(index, 1);
+          }
+        } else {
+          for (const taste of tastes) {
+            if (selected.has(taste.id)) taste.published = action === "publish";
+          }
+        }
+        selected.clear();
+        invalidateCatalog();
+        const doneKey =
+          action === "publish"
+            ? "admin.bulk.published"
+            : action === "unpublish"
+              ? "admin.bulk.unpublished"
+              : "admin.bulk.deleted";
+        toast(t(doneKey, { count: affected }), "success");
+        paint();
+      } catch {
+        toast(t("error.generic"), "error");
+      }
+    };
+
+    const publish = document.createElement("button");
+    publish.type = "button";
+    publish.className = "btn";
+    publish.textContent = t("admin.bulk.publish");
+    publish.addEventListener("click", () => void run("publish"));
+    const unpublish = document.createElement("button");
+    unpublish.type = "button";
+    unpublish.className = "btn";
+    unpublish.textContent = t("admin.bulk.unpublish");
+    unpublish.addEventListener("click", () => void run("unpublish"));
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "btn btn-danger";
+    del.textContent = t("action.delete");
+    del.addEventListener("click", () => void run("delete"));
+    bulkBar.append(publish, unpublish, del);
+  };
+
+  const paint = (): void => {
+    const visible = visibleTastes();
+    // Selection follows the data: drop ids that no longer exist.
+    const known = new Set(tastes.map((x) => x.id));
+    for (const id of selected) if (!known.has(id)) selected.delete(id);
     listEl.innerHTML = "";
     if (!visible.length) {
       const empty = document.createElement("p");
       empty.className = "muted";
       empty.textContent = t("admin.empty");
       listEl.appendChild(empty);
-      return;
+    } else {
+      for (const taste of visible) listEl.appendChild(row(taste));
     }
-    for (const taste of visible) listEl.appendChild(row(taste));
+    paintBulkBar();
   };
 
   const row = (taste: AdminTasteSummary): HTMLElement => {
     const el = document.createElement("div");
     el.className = "taste-row admin-row";
     const category = categories.get(taste.categoryId);
+
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.className = "row-check";
+    check.checked = selected.has(taste.id);
+    check.setAttribute("aria-label", t("admin.bulk.select", { title: taste.title }));
+    check.addEventListener("change", () => {
+      if (check.checked) selected.add(taste.id);
+      else selected.delete(taste.id);
+      paintBulkBar();
+    });
+    el.appendChild(check);
 
     const thumb = document.createElement("div");
     thumb.className = "row-media";

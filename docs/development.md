@@ -12,7 +12,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts the Fastify server on port 3000 (tsx watch) and the Vite dev server on port 5173 with a proxy for `/api`, `/uploads`, `/healthz` and the SEO endpoints. Open http://localhost:5173.
+`npm run dev` starts the Fastify server on port 3000 (tsx watch) and the Vite dev server on port 5173 with a proxy for `/api`, `/uploads`, `/healthz` and the SEO endpoints. Open [http://localhost:5173](http://localhost:5173).
 
 First boot seeds the default categories (locale from `SEED_LOCALE`, English by default) and the admin account `taster` / `changeme` with a forced password change. Runtime data lands in `server/var/` in dev (the `DATA_DIR` default resolves against the server's working directory); delete that folder for a fresh start.
 

@@ -29,6 +29,7 @@ interface ListState {
   rating: number | null; // exact rating, driven by the filter-bar select
   favorites: boolean;
   sort: SortKey;
+  rev: boolean; // reversed sort direction
   view: ViewKey;
 }
 
@@ -51,6 +52,7 @@ function readState(params: URLSearchParams): ListState {
     rating: exact >= 1 && exact <= 5 ? exact : null,
     favorites: params.get("fav") === "1",
     sort: sort && ["recent", "date", "rating", "title"].includes(sort) ? sort : "recent",
+    rev: params.get("rev") === "1",
     view: ["grid", "compact", "tiers"].includes(view ?? "") ? (view as ViewKey) : "grid",
   };
 }
@@ -73,6 +75,7 @@ function writeState(state: ListState): void {
   if (state.rating !== null) params.set("r", String(state.rating));
   if (state.favorites) params.set("fav", "1");
   if (state.sort !== "recent") params.set("sort", state.sort);
+  if (state.rev) params.set("rev", "1");
   if (state.view !== "grid") params.set("view", state.view);
   replaceQuery(params);
   try {
@@ -82,13 +85,16 @@ function writeState(state: ListState): void {
   }
 }
 
-function sortTastes(list: TasteSummary[], sort: SortKey): TasteSummary[] {
+function sortTastes(list: TasteSummary[], sort: SortKey, rev = false): TasteSummary[] {
   const byTitle = (a: TasteSummary, b: TasteSummary) =>
     a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  // Only the primary criterion flips; the title tiebreak stays A to Z and
+  // undated entries stay last either way.
+  const m = rev ? -1 : 1;
   const sorted = [...list];
   switch (sort) {
     case "title":
-      sorted.sort(byTitle);
+      sorted.sort((a, b) => m * byTitle(a, b));
       break;
     case "date":
       // Partial dates compare correctly as strings; undated entries go last.
@@ -96,14 +102,14 @@ function sortTastes(list: TasteSummary[], sort: SortKey): TasteSummary[] {
         if (a.refDate === null && b.refDate === null) return byTitle(a, b);
         if (a.refDate === null) return 1;
         if (b.refDate === null) return -1;
-        return b.refDate.localeCompare(a.refDate) || byTitle(a, b);
+        return m * b.refDate.localeCompare(a.refDate) || byTitle(a, b);
       });
       break;
     case "rating":
-      sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || byTitle(a, b));
+      sorted.sort((a, b) => m * ((b.rating ?? 0) - (a.rating ?? 0)) || byTitle(a, b));
       break;
     default:
-      sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || byTitle(a, b));
+      sorted.sort((a, b) => m * b.createdAt.localeCompare(a.createdAt) || byTitle(a, b));
   }
   return sorted;
 }
@@ -271,10 +277,23 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       label: t("sort.label"),
       onChange: (value) => {
         state.sort = value as SortKey;
+        // Each sort comes back in its natural direction.
+        state.rev = false;
         update();
       },
     });
     sortWrap.appendChild(sortSel.el);
+
+    const revBtn = document.createElement("button");
+    revBtn.type = "button";
+    revBtn.className = "icon-btn rev-btn";
+    tip(revBtn, t("sort.reverse"), "bottom");
+    revBtn.setAttribute("aria-label", t("sort.reverse"));
+    revBtn.addEventListener("click", () => {
+      state.rev = !state.rev;
+      update();
+    });
+    sortWrap.appendChild(revBtn);
     toolbar.appendChild(sortWrap);
 
     // View switch
@@ -627,7 +646,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
         groups.push({ rating: r, items: filtered.filter((x) => x.rating === r) });
       }
       groups.push({ rating: null, items: filtered.filter((x) => x.rating === null) });
-      for (const group of groups) group.items = sortTastes(group.items, rowSort);
+      for (const group of groups) group.items = sortTastes(group.items, rowSort, state.rev);
       rememberListOrder(groups.flatMap((group) => group.items.map((x) => x.id)));
 
       let eagerLeft = EAGER_CARDS;
@@ -660,7 +679,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       return;
     }
 
-    const sorted = sortTastes(filtered, state.sort);
+    const sorted = sortTastes(filtered, state.sort, state.rev);
     rememberListOrder(sorted.map((x) => x.id));
     if (state.view === "compact") {
       // Show the date driving the active sort, so the order stays legible;
@@ -690,6 +709,16 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     main
       .querySelectorAll<HTMLButtonElement>(".view-btn")
       .forEach((b) => (b.dataset.active = String(b.dataset.view === state.view)));
+    const revBtn = main.querySelector<HTMLButtonElement>(".rev-btn");
+    if (revBtn) {
+      revBtn.dataset.active = String(state.rev);
+      revBtn.setAttribute("aria-pressed", String(state.rev));
+      revBtn.innerHTML = "";
+      // The icon shows the effective direction of the primary criterion:
+      // title sorts A to Z by nature, the others newest/best first.
+      const descending = state.sort === "title" ? state.rev : !state.rev;
+      revBtn.appendChild(icon(descending ? "bars-arrow-down" : "bars-arrow-up"));
+    }
   }
 
   return () => {

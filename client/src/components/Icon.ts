@@ -36,6 +36,8 @@ import trashO from "heroicons/24/outline/trash.svg?raw";
 import arrowUpO from "heroicons/24/outline/arrow-up.svg?raw";
 import arrowsUpDownO from "heroicons/24/outline/arrows-up-down.svg?raw";
 import arrowDownO from "heroicons/24/outline/arrow-down.svg?raw";
+import barsArrowUpO from "heroicons/24/outline/bars-arrow-up.svg?raw";
+import barsArrowDownO from "heroicons/24/outline/bars-arrow-down.svg?raw";
 import arrowTopRightO from "heroicons/24/outline/arrow-top-right-on-square.svg?raw";
 import arrowLeftO from "heroicons/24/outline/arrow-left.svg?raw";
 import arrowRightO from "heroicons/24/outline/arrow-right.svg?raw";
@@ -97,6 +99,8 @@ const ICONS: Record<string, string> = {
   "arrow-up": arrowUpO,
   "arrows-up-down": arrowsUpDownO,
   "arrow-down": arrowDownO,
+  "bars-arrow-up": barsArrowUpO,
+  "bars-arrow-down": barsArrowDownO,
   "arrow-top-right-on-square": arrowTopRightO,
   "arrow-left": arrowLeftO,
   "arrow-right": arrowRightO,

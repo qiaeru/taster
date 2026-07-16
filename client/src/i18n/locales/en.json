@@ -26,6 +26,7 @@
   "filters.random": "Surprise me",
 
   "sort.label": "Sort by",
+  "sort.reverse": "Reverse order",
   "sort.recent": "Date added",
   "sort.date": "Reference date",
   "sort.rating": "Rating",

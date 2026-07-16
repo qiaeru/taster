@@ -6,7 +6,7 @@
 // not pop in as one late batch (HTTP/1.1 queues thumbs ~6 at a time).
 
 import type { Category, Status, TasteSummary } from "@taster/shared";
-import { thumbUrl } from "../api.js";
+import { displayUrl, thumbUrl } from "../api.js";
 import { icon } from "./Icon.js";
 import { tip } from "./Tooltip.js";
 import { starDisplay } from "./StarRating.js";
@@ -39,6 +39,8 @@ function media(taste: TasteSummary, category: Category | undefined, eager: boole
   if (taste.imageFile) {
     const img = document.createElement("img");
     img.src = thumbUrl(taste.imageFile);
+    // High-density screens get the display variant, keeping covers sharp.
+    img.srcset = `${thumbUrl(taste.imageFile)} 1x, ${displayUrl(taste.imageFile)} 2x`;
     img.alt = "";
     img.loading = eager ? "eager" : "lazy";
     if (eager) img.setAttribute("fetchpriority", "high");

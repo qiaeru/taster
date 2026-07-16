@@ -26,6 +26,7 @@
   "filters.random": "Aléatoire",
 
   "sort.label": "Trier par",
+  "sort.reverse": "Inverser l’ordre",
   "sort.recent": "Date d’ajout",
   "sort.date": "Date de référence",
   "sort.rating": "Note",

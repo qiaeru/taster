@@ -14,9 +14,9 @@ docker compose up -d
 
 The container runs as a non-root user with **UID 999, GID 999**. The host directory bind-mounted to `/app/var` must be owned by that UID/GID, otherwise the server cannot open the database file and crashes at startup with `unable to open database file`; the `chown` above handles it.
 
-Open http://your-server:3000, click the lock icon in the header and sign in with `taster` / `changeme`. You are forced to choose a new password immediately.
+Open http://your-server:3000, click the sign-in icon in the header and sign in with `taster` / `changeme`. You are forced to choose a new password immediately.
 
-To use the prebuilt image instead of building locally, replace `build: .` with `image: ghcr.io/qiaeru/taster:latest` in the compose file.
+To use the prebuilt image instead of building locally, replace the `build: .` and `image: taster:latest` lines with `image: ghcr.io/qiaeru/taster:latest` in the compose file.
 
 ## HTTPS
 
@@ -30,7 +30,7 @@ All three set `TRUST_PROXY=1` and `COOKIE_SECURE=1` and pass `PUBLIC_URL` so Ope
 
 ## Data and backups
 
-Everything lives in the mounted `var/` folder: `taster.db` (plus its `-wal`/`-shm` companions) and `uploads/`. Back that folder up; restoring it on a fresh container restores the whole instance. The JSON export (admin, Import / Export tab, "Include images") is a complementary portable backup.
+Everything lives in the mounted `var/` folder: `taster.db` (plus its `-wal`/`-shm` companions) and `uploads/`. Back that folder up; restoring it on a fresh container restores the whole instance. The JSON export (admin, Import and export tab, "Include images") is a complementary portable backup, alongside the categories export from the same tab.
 
 ## Upgrades
 

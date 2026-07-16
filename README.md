@@ -5,7 +5,7 @@
 [![Docker image](https://img.shields.io/badge/ghcr.io-qiaeru%2Ftaster-blue)](https://github.com/qiaeru/taster/pkgs/container/taster)
 [![GitHub stars](https://img.shields.io/github/stars/qiaeru/taster?style=social)](https://github.com/qiaeru/taster/stargazers)
 
-A self-hosted showcase of your personal tastes: rate, tag and review films, series, video games, recipes, books, music and anything else, then share them with your readers as a beautiful filterable list.
+A self-hosted showcase of your personal tastes. Rate, tag and review movies, TV shows, video games, restaurants and more, and share them as a beautiful filterable list.
 
 Visitors browse a card grid they can filter by category, tag, status, rating or favorites, search instantly, and flip into a tier-list view grouped by rating. Each taste has its own page with star ratings, a sectioned review (Markdown, with click-to-reveal spoilers), reference links, an optional map location and a "read the full review" link back to your blog. Only you edit, behind a hardened admin login.
 
@@ -20,8 +20,8 @@ Visitors browse a card grid they can filter by category, tag, status, rating or 
 
 ### What it does
 
-- **One list for every taste.** Categories are yours to define (films, series, video games, food, books and music are seeded) with their own icon, color and progress statuses (Vu / En cours / À voir for films, Terminé / Abandonné / À jouer for games...).
-- **Rich taste pages.** 1-5 star rating with labels (médiocre to excellent), free-form tags, flexible-precision dates (year, month or day), an illustration image, GPS coordinates that open the visitor's preferred maps app, reference links (Wikipedia, IMDb...), and a review split into titled sections with optional sub-ratings, or a single link to your full review on your blog.
+- **One list for every taste.** Categories are yours to define (movies, TV shows, video games, restaurants, books and music are seeded) with their own icon, color and progress statuses (Watched, Watching or To watch for movies, Finished, Dropped or To play for games...).
+- **Rich taste pages.** 1-5 star rating with labels (Terrible to Excellent), free-form tags, flexible-precision dates (year, month or day), an illustration image, GPS coordinates that open the visitor's preferred maps app, reference links (Wikipedia, IMDb...), and a review split into titled sections with optional sub-ratings, or a single link to your full review on your blog.
 - **A pleasant browse.** Instant accent-insensitive search over titles and tags, contextual filters, four sort orders, three views (grid, compact rows, tier list by rating), a random pick button, and shareable URLs that capture the current filters.
 - **Made to be shared.** Real permalinks with server-rendered OpenGraph previews (links unfurl nicely on Mastodon, Discord and friends), an Atom feed of your latest tastes, a sitemap, a public statistics page and an installable PWA.
 - **Drafts and favorites.** Prepare an entry privately until its blog post ships; pin your favorites with a heart badge and a dedicated filter.
@@ -31,7 +31,7 @@ Visitors browse a card grid they can filter by category, tag, status, rating or 
 ### Under the hood
 
 - **Backend.** Node.js 24 and Fastify 5 in a single process; SQLite through the built-in `node:sqlite` module (zero database dependency), numbered SQL migrations, one `var/` volume for everything.
-- **Frontend.** Vanilla TypeScript with Vite and Tailwind CSS v4, no UI framework; pages lazy-load, Markdown renders through marked + DOMPurify only where needed, Heroicons bundled, Inter and Fraunces self-hosted.
+- **Frontend.** Vanilla TypeScript with Vite and Tailwind CSS v4, no UI framework; pages lazy-load, Markdown renders through marked + DOMPurify only where needed, Heroicons and Simple Icons bundled, Hanken Grotesk and Young Serif self-hosted.
 - **Images stay light.** Every upload or imported image is validated by magic bytes and re-encoded server-side (sharp) into a ~480 px thumbnail for cards and a 1600 px WebP for the page; originals are never stored, cards lazy-load with fixed dimensions.
 - **Hardened.** Argon2id passwords with a zxcvbn policy and forced first-boot change, encrypted `SameSite=Strict` session cookies, CSRF double-submit, rate limits and lockout, strict CSP, non-root container.
 - **Ready for public release.** MIT licensed, license check in CI, Dependabot, GitHub Actions, multi-arch (amd64 + arm64) GHCR releases.
@@ -46,7 +46,7 @@ mkdir -p var && sudo chown -R 999:999 var
 docker compose up -d
 ```
 
-Open <http://localhost:3000>, click the lock icon and sign in with `taster` / `changeme` (a new password is required immediately). Import [`data/demo-tastes.fr.json`](./data/demo-tastes.fr.json) from the admin to see the app populated, or create your first taste.
+Open <http://localhost:3000>, click the sign-in icon and sign in with `taster` / `changeme` (a new password is required immediately). Import [`data/taster-tastes-template-en.json`](./data/taster-tastes-template-en.json) from the admin to see the app populated, or create your first taste.
 
 ## HTTPS deployments
 

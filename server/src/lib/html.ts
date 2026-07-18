@@ -57,8 +57,9 @@ function metaTags(og: OgData): string {
   return lines.join("\n    ");
 }
 
-// Markdown flattened to preview text (og:description is plain text).
-function plainExcerpt(md: string): string | null {
+// Markdown flattened to preview text (og:description and Atom summaries are
+// plain text).
+export function plainExcerpt(md: string): string | null {
   const text = md
     // Never leak spoilers into previews. Non-greedy across any character:
     // a spoiler whose text itself contains a "|" must still be stripped.
@@ -69,8 +70,7 @@ function plainExcerpt(md: string): string | null {
   return text ? text.slice(0, 200) : null;
 }
 
-// First plain-text-ish excerpt of a taste's review, for og:description.
-function excerptFor(tasteId: string): string | null {
+export function excerptFor(tasteId: string): string | null {
   const row = getDb()
     .prepare(
       `SELECT body_md FROM sections WHERE taste_id = ? AND body_md != ''
@@ -98,7 +98,6 @@ export function renderIndexHtml(url: string): string {
       | { id: string; title: string; description: string | null; imageFile: string | null }
       | undefined;
     if (row) {
-      // The taste's own synopsis beats a review excerpt as preview text.
       const synopsis = row.description ? plainExcerpt(row.description) : null;
       const og = metaTags({
         title: `${row.title} · Taster`,

@@ -6,6 +6,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { getDb } from "../db/index.js";
 import { config } from "../config.js";
+import { excerptFor, plainExcerpt } from "../lib/html.js";
 
 const FEED_LIMIT = 50;
 
@@ -31,6 +32,7 @@ function toIso(sqliteUtc: string): string {
 interface FeedRow {
   id: string;
   title: string;
+  description: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,7 +42,7 @@ export default async function seoRoutes(app: FastifyInstance) {
     const base = baseUrl(request);
     const rows = getDb()
       .prepare(
-        `SELECT id, title, created_at AS createdAt, updated_at AS updatedAt
+        `SELECT id, title, description, created_at AS createdAt, updated_at AS updatedAt
          FROM tastes WHERE published = 1
          ORDER BY created_at DESC, id LIMIT ?`
       )
@@ -56,13 +58,21 @@ export default async function seoRoutes(app: FastifyInstance) {
     const entries = rows
       .map((row) => {
         const url = `${base}/taste/${row.id}`;
-        return `  <entry>
-    <id>urn:uuid:${row.id}</id>
-    <title>${escapeXml(row.title)}</title>
-    <link href="${escapeXml(url)}"/>
-    <published>${toIso(row.createdAt)}</published>
-    <updated>${toIso(row.updatedAt)}</updated>
-  </entry>`;
+        // The taste's own synopsis beats a review excerpt, like link previews.
+        const summary = (row.description && plainExcerpt(row.description)) || excerptFor(row.id);
+        const lines = [
+          "  <entry>",
+          `    <id>urn:uuid:${row.id}</id>`,
+          `    <title>${escapeXml(row.title)}</title>`,
+          `    <link href="${escapeXml(url)}"/>`,
+        ];
+        if (summary) lines.push(`    <summary>${escapeXml(summary)}</summary>`);
+        lines.push(
+          `    <published>${toIso(row.createdAt)}</published>`,
+          `    <updated>${toIso(row.updatedAt)}</updated>`,
+          "  </entry>"
+        );
+        return lines.join("\n");
       })
       .join("\n");
 

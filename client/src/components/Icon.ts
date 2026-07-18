@@ -62,6 +62,18 @@ const dieO =
   '<circle cx="15.75" cy="15.75" r="1.1" fill="currentColor" stroke="none" />' +
   "</svg>";
 
+// Hand-drawn drag grip (two dot columns) in the Heroicons outline style;
+// Heroicons has no grip icon and the hamburger reads as a menu.
+const gripO =
+  '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
+  '<circle cx="9.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />' +
+  '<circle cx="14.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />' +
+  '<circle cx="9.5" cy="12" r="1.2" fill="currentColor" stroke="none" />' +
+  '<circle cx="14.5" cy="12" r="1.2" fill="currentColor" stroke="none" />' +
+  '<circle cx="9.5" cy="17.5" r="1.2" fill="currentColor" stroke="none" />' +
+  '<circle cx="14.5" cy="17.5" r="1.2" fill="currentColor" stroke="none" />' +
+  "</svg>";
+
 import starS from "heroicons/24/solid/star.svg?raw";
 import heartS from "heroicons/24/solid/heart.svg?raw";
 import starS20 from "heroicons/20/solid/star.svg?raw";
@@ -110,6 +122,7 @@ const ICONS: Record<string, string> = {
   "arrow-right-start-on-rectangle": arrowRightStartO,
   "arrow-right-end-on-rectangle": arrowRightEndO,
   die: dieO,
+  grip: gripO,
   "document-arrow-down": documentArrowDownO,
   "document-arrow-up": documentArrowUpO,
   photo: photoO,

@@ -8,6 +8,7 @@ import { icon } from "./Icon.js";
 import { tip } from "./Tooltip.js";
 import { starInput, type StarInput } from "./StarRating.js";
 import { t } from "../i18n/index.js";
+import { dragReorder, moveItem } from "../lib/dragReorder.js";
 import { renderMarkdown } from "../lib/markdown.js";
 
 interface SectionBlock {
@@ -37,6 +38,13 @@ export function sectionEditor(initial: ReviewSection[]): SectionEditorWidget {
   const list = document.createElement("div");
   list.className = "section-list";
   wrap.appendChild(list);
+  const dnd = dragReorder(
+    () => list,
+    (from, to) => {
+      moveItem(blocks, from, to);
+      paint();
+    }
+  );
 
   const addBtn = document.createElement("button");
   addBtn.type = "button";
@@ -74,6 +82,7 @@ export function sectionEditor(initial: ReviewSection[]): SectionEditorWidget {
 
       const tools = document.createElement("div");
       tools.className = "section-tools";
+      tools.appendChild(dnd.attach(card));
       const mkTool = (name: string, label: string, onClick: () => void, disabled = false) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -87,13 +96,13 @@ export function sectionEditor(initial: ReviewSection[]): SectionEditorWidget {
       };
       tools.appendChild(
         mkTool("arrow-up", t("form.section.moveUp"), () => {
-          [blocks[index - 1], blocks[index]] = [blocks[index], blocks[index - 1]];
+          moveItem(blocks, index, index - 1);
           paint();
         }, index === 0)
       );
       tools.appendChild(
         mkTool("arrow-down", t("form.section.moveDown"), () => {
-          [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]];
+          moveItem(blocks, index, index + 1);
           paint();
         }, index === blocks.length - 1)
       );

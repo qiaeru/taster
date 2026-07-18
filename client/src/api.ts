@@ -118,21 +118,47 @@ export const publicApi = {
   tags: () => api.get<{ id: number; name: string }[]>("/api/tags"),
 };
 
+// The session answer is constant for the whole visit (it only changes through
+// login/logout/password change below), yet the list and detail pages both ask
+// for it on every render; cache it so a browse session costs one request.
+let sessionPromise: Promise<SessionInfo> | null = null;
+function invalidateSession(): void {
+  sessionPromise = null;
+}
+
 export const authApi = {
-  session: () => api.get<SessionInfo>("/api/auth/session"),
+  session: (): Promise<SessionInfo> => {
+    if (!sessionPromise) {
+      sessionPromise = api.get<SessionInfo>("/api/auth/session");
+      sessionPromise.catch(invalidateSession);
+    }
+    return sessionPromise;
+  },
   login: (username: string, password: string) =>
-    api.post<{ authenticated: boolean; mustChangePassword: boolean }>("/api/auth/login", {
-      username,
-      password,
-    }),
+    api
+      .post<{ authenticated: boolean; mustChangePassword: boolean }>("/api/auth/login", {
+        username,
+        password,
+      })
+      .then((r) => {
+        invalidateSession();
+        return r;
+      }),
   logout: () =>
     api.post<{ ok: boolean }>("/api/auth/logout").then((r) => {
       // Logging out replaces the session, which voids the cached CSRF token.
       invalidateCsrf();
+      invalidateSession();
       return r;
     }),
   changePassword: (currentPassword: string, newPassword: string) =>
-    api.post<{ ok: boolean }>("/api/auth/change-password", { currentPassword, newPassword }),
+    api
+      .post<{ ok: boolean }>("/api/auth/change-password", { currentPassword, newPassword })
+      .then((r) => {
+        // mustChangePassword just flipped; the cached answer is stale.
+        invalidateSession();
+        return r;
+      }),
 };
 
 export const adminApi = {
@@ -141,6 +167,8 @@ export const adminApi = {
   updateTaste: (id: string, input: TasteInput) =>
     api.put<TasteDetail>(`/api/admin/tastes/${id}`, input),
   deleteTaste: (id: string) => api.delete<{ ok: boolean }>(`/api/admin/tastes/${id}`),
+  setFavorite: (id: string, favorite: boolean) =>
+    api.put<{ favorite: boolean }>(`/api/admin/tastes/${id}/favorite`, { favorite }),
   bulkTastes: (action: "publish" | "unpublish" | "delete", ids: string[]) =>
     api.post<{ affected: number }>("/api/admin/tastes/bulk", { action, ids }),
   uploadImage: async (id: string, blob: Blob, filename: string) => {
@@ -168,6 +196,15 @@ export const adminApi = {
   updateCategory: (id: number, input: CategoryInput) =>
     api.put<Category>(`/api/admin/categories/${id}`, input),
   deleteCategory: (id: number) => api.delete<{ ok: boolean }>(`/api/admin/categories/${id}`),
+  reorderCategories: (ids: number[]) =>
+    api.put<Category[]>("/api/admin/categories/reorder", { ids }),
+  tags: () => api.get<{ id: number; name: string; count: number }[]>("/api/admin/tags"),
+  renameTag: (id: number, name: string, merge = false) =>
+    api.put<{ ok: boolean; merged: boolean }>(
+      `/api/admin/tags/${id}`,
+      merge ? { name, merge: true } : { name }
+    ),
+  deleteTag: (id: number) => api.delete<{ ok: boolean }>(`/api/admin/tags/${id}`),
   setStatuses: (id: number, statuses: { id?: number; name: string }[]) =>
     api.put<Category>(`/api/admin/categories/${id}/statuses`, { statuses }),
 };

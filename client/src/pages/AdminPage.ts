@@ -20,6 +20,7 @@ import { starDisplay } from "../components/StarRating.js";
 import { toast } from "../components/Toaster.js";
 import { confirmDialog } from "../components/ConfirmDialog.js";
 import { t } from "../i18n/index.js";
+import { dragReorder, moveItem } from "../lib/dragReorder.js";
 import { formatDateTime, searchFold } from "../lib/format.js";
 import { navigate, rerender } from "../router.js";
 import { renderImportExportTab } from "./adminImportExport.js";
@@ -188,6 +189,7 @@ function renderPasswordChange(main: HTMLElement, forced: boolean, onDone: () => 
 
 async function renderTastesTab(body: HTMLElement): Promise<void> {
   const [tastes, catalog] = await Promise.all([adminApi.tastes(), loadCatalog()]);
+  if (body.dataset.tab !== "tastes") return; // another tab took over meanwhile
   const categories = new Map(catalog.categories.map((c) => [c.id, c]));
   body.innerHTML = "";
 
@@ -205,6 +207,28 @@ async function renderTastesTab(body: HTMLElement): Promise<void> {
   filter.placeholder = t("admin.search");
   filter.setAttribute("aria-label", t("admin.search"));
   toolbar.appendChild(filter);
+
+  // Drafts-only toggle, with a live count of what waits to be published.
+  let draftsOnly = false;
+  const draftsBtn = document.createElement("button");
+  draftsBtn.type = "button";
+  draftsBtn.className = "chip chip-toggle";
+  const paintDraftsBtn = (): void => {
+    draftsBtn.innerHTML = "";
+    draftsBtn.dataset.active = String(draftsOnly);
+    draftsBtn.setAttribute("aria-pressed", String(draftsOnly));
+    draftsBtn.appendChild(document.createTextNode(t("admin.filter.drafts")));
+    const count = document.createElement("span");
+    count.className = "chip-count";
+    count.textContent = String(tastes.filter((x) => !x.published).length);
+    draftsBtn.appendChild(count);
+  };
+  paintDraftsBtn();
+  draftsBtn.addEventListener("click", () => {
+    draftsOnly = !draftsOnly;
+    paint();
+  });
+  toolbar.appendChild(draftsBtn);
   body.appendChild(toolbar);
 
   // Bulk actions: the bar appears as soon as one row is checked.
@@ -220,9 +244,10 @@ async function renderTastesTab(body: HTMLElement): Promise<void> {
 
   const visibleTastes = (): AdminTasteSummary[] => {
     const fold = searchFold(filter.value.trim());
+    const pool = draftsOnly ? tastes.filter((x) => !x.published) : tastes;
     return fold
-      ? tastes.filter((x) => searchFold(x.title + " " + x.tags.join(" ")).includes(fold))
-      : tastes;
+      ? pool.filter((x) => searchFold(x.title + " " + x.tags.join(" ")).includes(fold))
+      : pool;
   };
 
   const paintBulkBar = (): void => {
@@ -310,6 +335,7 @@ async function renderTastesTab(body: HTMLElement): Promise<void> {
     } else {
       for (const taste of visible) listEl.appendChild(row(taste));
     }
+    paintDraftsBtn();
     paintBulkBar();
   };
 
@@ -418,11 +444,39 @@ async function renderTastesTab(body: HTMLElement): Promise<void> {
 
 async function renderCategoriesTab(body: HTMLElement): Promise<void> {
   const categories = await api.get<Category[]>("/api/categories");
+  if (body.dataset.tab !== "categories") return; // another tab took over
   body.innerHTML = "";
 
   const list = document.createElement("div");
   list.className = "category-list";
   body.appendChild(list);
+
+  // Reordering moves the card in place and persists immediately: the cards
+  // hold unsaved edits, so a full tab re-render here would throw them away.
+  const catDnd = dragReorder(
+    () => list,
+    (from, to) => {
+      // Same filter as dragReorder so the indices line up.
+      const rows = [...list.children].filter((el) => (el as HTMLElement).dataset.dragRow);
+      const moved = rows[from];
+      if (from < to) list.insertBefore(moved, rows[to].nextSibling);
+      else list.insertBefore(moved, rows[to]);
+      const ids = [...list.children]
+        .map((card) => Number((card as HTMLElement).dataset.categoryId))
+        .filter((id) => Number.isInteger(id) && id > 0);
+      adminApi
+        .reorderCategories(ids)
+        .then(() => {
+          invalidateCatalog();
+          toast(t("categories.saved"), "success");
+        })
+        .catch(() => {
+          toast(t("error.generic"), "error");
+          // Restore the server truth, unless another tab took over meanwhile.
+          if (body.dataset.tab === "categories") void renderCategoriesTab(body);
+        });
+    }
+  );
 
   // Visual icon library: a grid of showcased Heroicons plus a free-text field
   // accepting any other Heroicons outline name.
@@ -555,9 +609,11 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
   const categoryCard = (category: Category): HTMLElement => {
     const card = document.createElement("div");
     card.className = "category-card";
+    card.dataset.categoryId = String(category.id);
 
     const headRow = document.createElement("div");
     headRow.className = "category-head";
+    headRow.appendChild(catDnd.attach(card));
     const iconPreview = document.createElement("span");
     iconPreview.className = "cat-badge";
     iconPreview.style.setProperty("--cat-color", category.color);
@@ -595,11 +651,19 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
     }));
     const statusList = document.createElement("div");
     statusList.className = "status-list";
+    const statusDnd = dragReorder(
+      () => statusList,
+      (from, to) => {
+        moveItem(statuses, from, to);
+        paintStatuses();
+      }
+    );
     const paintStatuses = (): void => {
       statusList.innerHTML = "";
       statuses.forEach((status, index) => {
         const rowEl = document.createElement("div");
         rowEl.className = "status-row";
+        rowEl.appendChild(statusDnd.attach(rowEl));
         const input = document.createElement("input");
         input.type = "text";
         input.className = "input";
@@ -614,7 +678,7 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
         up.setAttribute("aria-label", t("form.section.moveUp"));
         up.appendChild(icon("arrow-up", "icon icon-sm"));
         up.addEventListener("click", () => {
-          [statuses[index - 1], statuses[index]] = [statuses[index], statuses[index - 1]];
+          moveItem(statuses, index, index - 1);
           paintStatuses();
         });
         const down = document.createElement("button");
@@ -625,7 +689,7 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
         down.setAttribute("aria-label", t("form.section.moveDown"));
         down.appendChild(icon("arrow-down", "icon icon-sm"));
         down.addEventListener("click", () => {
-          [statuses[index], statuses[index + 1]] = [statuses[index + 1], statuses[index]];
+          moveItem(statuses, index, index + 1);
           paintStatuses();
         });
         const remove = document.createElement("button");
@@ -764,6 +828,110 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
   body.insertBefore(newForm, list);
 }
 
+// ---- tags tab ----
+
+async function renderTagsTab(body: HTMLElement): Promise<void> {
+  const tags = await adminApi.tags();
+  if (body.dataset.tab !== "tags") return; // another tab took over meanwhile
+  body.innerHTML = "";
+
+  const hint = document.createElement("p");
+  hint.className = "muted field-hint";
+  hint.textContent = t("tags.hint");
+  body.appendChild(hint);
+
+  if (!tags.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = t("tags.empty");
+    body.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement("div");
+  list.className = "status-list tag-admin-list";
+  body.appendChild(list);
+
+  const reload = (): void => {
+    invalidateCatalog();
+    void renderTagsTab(body);
+  };
+
+  for (const tag of tags) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "status-row";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "input";
+    input.maxLength = 80;
+    input.value = tag.name;
+    input.setAttribute("aria-label", tag.name);
+    rowEl.appendChild(input);
+
+    const count = document.createElement("span");
+    count.className = "muted tag-usage";
+    count.textContent = t("tags.count", { count: tag.count });
+    rowEl.appendChild(count);
+
+    const rename = async (merge: boolean): Promise<void> => {
+      try {
+        const result = await adminApi.renameTag(tag.id, input.value, merge);
+        toast(t(result.merged ? "tags.merged" : "tags.saved"), "success");
+        reload();
+      } catch (err) {
+        if (err instanceof ApiError && err.code === "TAG_EXISTS") {
+          const existing = (err.details as { name?: string })?.name ?? input.value;
+          if (
+            await confirmDialog(t("tags.mergeConfirm", { name: existing }), t("tags.merge.action"))
+          ) {
+            await rename(true);
+          }
+        } else {
+          toast(t("error.generic"), "error");
+        }
+      }
+    };
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "icon-btn";
+    tip(save, t("action.save"));
+    save.setAttribute("aria-label", t("action.save"));
+    save.appendChild(icon("check", "icon icon-sm"));
+    const paintDirty = (): void => {
+      save.disabled = input.value.trim() === tag.name || !input.value.trim();
+    };
+    paintDirty();
+    input.addEventListener("input", paintDirty);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !save.disabled) void rename(false);
+    });
+    save.addEventListener("click", () => void rename(false));
+    rowEl.appendChild(save);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "icon-btn btn-danger";
+    tip(del, t("action.delete"));
+    del.setAttribute("aria-label", t("action.delete"));
+    del.appendChild(icon("trash", "icon icon-sm"));
+    del.addEventListener("click", async () => {
+      if (!(await confirmDialog(t("tags.deleteConfirm", { name: tag.name, count: tag.count }))))
+        return;
+      try {
+        await adminApi.deleteTag(tag.id);
+        toast(t("tags.deleted"), "success");
+        reload();
+      } catch {
+        toast(t("error.generic"), "error");
+      }
+    });
+    rowEl.appendChild(del);
+
+    list.appendChild(rowEl);
+  }
+}
+
 // ---- account tab ----
 
 function renderAccountTab(body: HTMLElement): void {
@@ -790,6 +958,7 @@ function renderDashboard(main: HTMLElement): void {
       label: t("admin.tab.categories"),
       render: (b) => void renderCategoriesTab(b),
     },
+    { key: "tags", label: t("admin.tab.tags"), render: (b) => void renderTagsTab(b) },
     {
       key: "io",
       label: t("admin.tab.importExport"),
@@ -828,6 +997,9 @@ function renderDashboard(main: HTMLElement): void {
         active = tab.key;
         paintNav();
         body.innerHTML = "";
+        // Tab renderers await their data; the marker lets a late response
+        // detect that another tab took over and drop its render.
+        body.dataset.tab = tab.key;
         tab.render(body);
       });
       tablist.appendChild(btn);
@@ -848,6 +1020,7 @@ function renderDashboard(main: HTMLElement): void {
 
   nav.append(tablist, logout);
   main.append(nav, body);
+  body.dataset.tab = tabs[0].key;
   tabs[0].render(body);
 }
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Add/edit form: title, category (drives the status options), star rating,
-// tags, flexible date, image (client downscale, uploaded after save), GPS,
+// tags, description, flexible date, image (client downscale, uploaded after
+// save), GPS,
 // review sections or an external review link, reference links, published and
 // favorite toggles.
 
@@ -17,6 +18,7 @@ import { sectionEditor } from "../components/SectionEditor.js";
 import { toast } from "../components/Toaster.js";
 import { confirmDialog } from "../components/ConfirmDialog.js";
 import { t } from "../i18n/index.js";
+import { dragReorder, moveItem } from "../lib/dragReorder.js";
 import { resizeForUpload } from "../lib/imageResize.js";
 import { navigate, setNavGuard } from "../router.js";
 
@@ -31,6 +33,7 @@ interface FormDraft {
   rating: TasteInput["rating"];
   statusId: string;
   tags: string[];
+  description?: string;
   refDate: string | null;
   lat: string;
   lng: string;
@@ -39,6 +42,7 @@ interface FormDraft {
   sections: ReviewSection[];
   links: { label: string; url: string }[];
   imageFocus: ImageFocus | null;
+  imageAlt?: string;
   published: boolean;
   favorite: boolean;
   savedAt: string;
@@ -237,6 +241,14 @@ export function renderTasteForm(
     const tags = tagInput(draft?.tags ?? detail?.tags ?? [], existingTags.map((x) => x.name));
     form.appendChild(field(t("form.tags"), tags.el, t("form.tags.hint")));
 
+    // Description
+    const description = document.createElement("textarea");
+    description.className = "textarea";
+    description.rows = 4;
+    description.maxLength = 5000;
+    description.value = draft ? draft.description ?? "" : detail?.description ?? "";
+    form.appendChild(field(t("form.description"), description, t("form.description.hint")));
+
     // Date
     const date = datePrecisionPicker(draft ? draft.refDate : detail?.refDate ?? null);
     form.appendChild(field(t("form.date"), date.el));
@@ -303,6 +315,8 @@ export function renderTasteForm(
       paintMarker();
     });
 
+    const hasImage = (): boolean =>
+      imageBlob !== null || Boolean(detail?.imageFile && !removeImage);
     const paintPreview = (): void => {
       if (imageBlob) {
         previewImg.src = URL.createObjectURL(imageBlob.blob);
@@ -317,6 +331,8 @@ export function renderTasteForm(
         previewEmpty.hidden = false;
       }
       removeBtn.hidden = previewImg.hidden;
+      // The image description only makes sense with an image to describe.
+      imageAltField.hidden = previewImg.hidden;
       paintMarker();
     };
 
@@ -351,8 +367,10 @@ export function renderTasteForm(
     const acceptFile = async (file: File): Promise<void> => {
       imageBlob = await resizeForUpload(file);
       removeImage = false;
-      // A new picture invalidates the old picture's focal point.
+      // A new picture invalidates the old picture's focal point and its
+      // description (it depicted the previous image).
       imageFocus = null;
+      imageAlt.value = "";
       paintPreview();
     };
     fileInput.addEventListener("change", () => {
@@ -384,6 +402,15 @@ export function renderTasteForm(
     imageActions.append(fileInput, chooseBtn, removeBtn);
     imageWrap.appendChild(imageActions);
     form.appendChild(field(t("form.image"), imageWrap, t("form.image.hint")));
+
+    // Image description (alt text / credits); hidden while there is no image.
+    const imageAlt = document.createElement("input");
+    imageAlt.type = "text";
+    imageAlt.className = "input";
+    imageAlt.maxLength = 300;
+    imageAlt.value = draft ? draft.imageAlt ?? "" : detail?.imageAlt ?? "";
+    const imageAltField = field(t("form.imageAlt"), imageAlt, t("form.imageAlt.hint"));
+    form.appendChild(imageAltField);
     paintPreview();
 
     // GPS
@@ -459,6 +486,13 @@ export function renderTasteForm(
     const linksList = document.createElement("div");
     linksList.className = "links-list";
     linksWrap.appendChild(linksList);
+    const linksDnd = dragReorder(
+      () => linksList,
+      (from, to) => {
+        moveItem(links, from, to);
+        paintLinks();
+      }
+    );
     const paintLinks = (): void => {
       linksList.innerHTML = "";
       links.forEach((link, index) => {
@@ -491,11 +525,11 @@ export function renderTasteForm(
           return btn;
         };
         const up = mkTool("arrow-up", t("form.links.moveUp"), () => {
-          [links[index - 1], links[index]] = [links[index], links[index - 1]];
+          moveItem(links, index, index - 1);
           paintLinks();
         }, index === 0);
         const down = mkTool("arrow-down", t("form.links.moveDown"), () => {
-          [links[index], links[index + 1]] = [links[index + 1], links[index]];
+          moveItem(links, index, index + 1);
           paintLinks();
         }, index === links.length - 1);
         const remove = document.createElement("button");
@@ -508,7 +542,7 @@ export function renderTasteForm(
           links.splice(index, 1);
           paintLinks();
         });
-        row.append(label, url, up, down, remove);
+        row.append(linksDnd.attach(row), label, url, up, down, remove);
         linksList.appendChild(row);
       });
     };
@@ -552,6 +586,7 @@ export function renderTasteForm(
         rating.get(),
         statusSel.get(),
         tags.get(),
+        description.value,
         date.get(),
         lat.value,
         lng.value,
@@ -560,6 +595,7 @@ export function renderTasteForm(
         sections.get(),
         links,
         imageFocus,
+        imageAlt.value,
         published.input.checked,
         favorite.input.checked,
         imageBlob !== null,
@@ -577,6 +613,7 @@ export function renderTasteForm(
       rating: rating.get(),
       statusId: statusSel.get(),
       tags: tags.get(),
+      description: description.value,
       refDate: date.get(),
       lat: lat.value,
       lng: lng.value,
@@ -585,6 +622,7 @@ export function renderTasteForm(
       sections: sections.get(),
       links,
       imageFocus,
+      imageAlt: imageAlt.value,
       published: published.input.checked,
       favorite: favorite.input.checked,
       savedAt: new Date().toISOString(),
@@ -664,9 +702,12 @@ export function renderTasteForm(
         rating: rating.get(),
         statusId: statusSel.get() ? Number(statusSel.get()) : null,
         tags: tags.get(),
+        description: description.value.trim() || null,
         refDate: date.get(),
         location: latValue !== "" ? { lat: Number(latValue), lng: Number(lngValue) } : null,
         imageFocus,
+        // No image, no image description: a removed image drops its alt too.
+        imageAlt: hasImage() ? imageAlt.value.trim() || null : null,
         externalReviewUrl: externalMode && externalUrl.value.trim() ? externalUrl.value.trim() : null,
         sections: externalMode ? [] : sections.get(),
         links: links.filter((l) => l.label.trim() || l.url.trim()),

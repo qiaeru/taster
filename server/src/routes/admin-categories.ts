@@ -71,6 +71,41 @@ export default async function adminCategoryRoutes(app: FastifyInstance) {
     return reply.code(201).send(listCategories().find((c) => c.id === id));
   });
 
+  // Persists a drag-and-drop reorder of the category cards: sort_order
+  // becomes the index in the submitted id list; ids not listed keep theirs.
+  app.put(
+    "/categories/reorder",
+    {
+      schema: {
+        body: {
+          type: "object",
+          required: ["ids"],
+          additionalProperties: false,
+          properties: {
+            ids: {
+              type: "array",
+              minItems: 1,
+              maxItems: 200,
+              items: { type: "integer", minimum: 1 },
+            },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const db = getDb();
+      const { ids } = request.body as { ids: number[] };
+      transaction(() => {
+        const update = db.prepare(
+          "UPDATE categories SET sort_order = ?, updated_at = datetime('now') WHERE id = ?"
+        );
+        ids.forEach((id, index) => update.run(index, id));
+        bumpDataRevision();
+      })();
+      return listCategories();
+    }
+  );
+
   app.put("/categories/:id", { schema: { params: ID_PARAMS } }, async (request, reply) => {
     const db = getDb();
     const { id } = request.params as { id: number };

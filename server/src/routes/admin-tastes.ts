@@ -72,6 +72,34 @@ export default async function adminTasteRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  // Quick favorite toggle from the list views. A full PUT would need the whole
+  // taste: the summary payload the list holds has no sections or links, and
+  // updateTaste would wipe them.
+  app.put(
+    "/tastes/:id/favorite",
+    {
+      schema: {
+        params: UUID_PARAMS,
+        body: {
+          type: "object",
+          required: ["favorite"],
+          additionalProperties: false,
+          properties: { favorite: { type: "boolean" } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const { favorite } = request.body as { favorite: boolean };
+      const info = getDb()
+        .prepare("UPDATE tastes SET favorite = ?, updated_at = datetime('now') WHERE id = ?")
+        .run(favorite ? 1 : 0, id);
+      if (info.changes === 0) return reply.code(404).send({ error: "NOT_FOUND" });
+      bumpDataRevision();
+      return { favorite };
+    }
+  );
+
   // Bulk actions from the admin list: publish/unpublish flip a flag in one
   // statement; delete goes through deleteTaste per id so image files and
   // orphan tags are cleaned up exactly like a single delete.

@@ -7,6 +7,7 @@ import type { FastifyInstance } from "fastify";
 import type { CategoryInput, StatusesInput } from "@taster/shared";
 import { getDb, bumpDataRevision, isUniqueViolation, transaction } from "../db/index.js";
 import { GENERIC_STATUSES, seededLocale } from "../db/seed.js";
+import { cleanCategoryFields, replaceStatuses, uniqueSlug } from "../lib/categories.js";
 import { listCategories } from "./categories.js";
 
 const ID_PARAMS = {
@@ -15,36 +16,10 @@ const ID_PARAMS = {
   properties: { id: { type: "integer", minimum: 1 } },
 } as const;
 
-function slugify(name: string): string {
-  const base = name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return base || "category";
-}
-
-export function uniqueSlug(name: string): string {
-  const db = getDb();
-  const base = slugify(name);
-  let candidate = base;
-  for (let i = 2; ; i++) {
-    const taken = db.prepare("SELECT 1 FROM categories WHERE slug = ?").get(candidate);
-    if (!taken) return candidate;
-    candidate = `${base}-${i}`;
-  }
-}
-
 function cleanCategoryInput(input: CategoryInput): { name: string; icon: string; color: string } {
-  const name = typeof input.name === "string" ? input.name.trim() : "";
-  if (!name || name.length > 100) throw Object.assign(new Error("VALIDATION"), { statusCode: 400 });
-  const icon = typeof input.icon === "string" && input.icon.length <= 50 ? input.icon : "tag";
-  const color =
-    typeof input.color === "string" && /^#[0-9a-fA-F]{6}$/.test(input.color)
-      ? input.color
-      : "#8b5cf6";
-  return { name, icon, color };
+  const clean = cleanCategoryFields(input);
+  if (!clean) throw Object.assign(new Error("VALIDATION"), { statusCode: 400 });
+  return clean;
 }
 
 export default async function adminCategoryRoutes(app: FastifyInstance) {
@@ -59,7 +34,6 @@ export default async function adminCategoryRoutes(app: FastifyInstance) {
       const info = db
         .prepare("INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)")
         .run(slug, name, icon, color, maxOrder + 1);
-      // New categories start with the generic statuses of the seed locale.
       const statuses = GENERIC_STATUSES[seededLocale()] ?? GENERIC_STATUSES.en;
       const insert = db.prepare(
         "INSERT INTO statuses (category_id, name, sort_order) VALUES (?, ?, ?)"
@@ -167,27 +141,7 @@ export default async function adminCategoryRoutes(app: FastifyInstance) {
 
       try {
         transaction(() => {
-          const keptIds = statuses.filter((s) => s.id).map((s) => s.id as number);
-          // Deleting a status sets referencing tastes' status_id to NULL (FK).
-          if (keptIds.length) {
-            db.prepare(
-              `DELETE FROM statuses WHERE category_id = ? AND id NOT IN (${keptIds.map(() => "?").join(",")})`
-            ).run(id, ...keptIds);
-          } else {
-            db.prepare("DELETE FROM statuses WHERE category_id = ?").run(id);
-          }
-          const update = db.prepare(
-            "UPDATE statuses SET name = ?, sort_order = ? WHERE id = ? AND category_id = ?"
-          );
-          const insert = db.prepare(
-            "INSERT INTO statuses (category_id, name, sort_order) VALUES (?, ?, ?)"
-          );
-          statuses.forEach((status, i) => {
-            const name = status.name.trim();
-            if (!name) return;
-            if (status.id) update.run(name, i, status.id, id);
-            else insert.run(id, name, i);
-          });
+          replaceStatuses(id, statuses);
           bumpDataRevision();
         })();
       } catch (err) {

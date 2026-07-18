@@ -19,7 +19,12 @@ import type {
   TasteInput,
 } from "@taster/shared";
 import { getDb, bumpDataRevision, transaction } from "../db/index.js";
-import { uniqueSlug } from "../routes/admin-categories.js";
+import {
+  cleanCategoryFields,
+  replaceStatuses,
+  uniqueSlug,
+  withExistingStatusIds,
+} from "./categories.js";
 import { getTasteDetail } from "./tastes.js";
 import {
   validateTasteInput,
@@ -305,41 +310,6 @@ export function exportCategories(): string {
   return BOM + JSON.stringify(file, null, 2) + "\n";
 }
 
-/**
- * Replaces a category's status list with `names` (in order). Statuses whose
- * name already exists keep their id, so tastes referencing them are untouched;
- * removed statuses null out referencing tastes via the FK.
- */
-function replaceStatuses(categoryId: number, names: string[]): void {
-  const db = getDb();
-  const existing = db
-    .prepare("SELECT id, name FROM statuses WHERE category_id = ?")
-    .all(categoryId) as { id: number; name: string }[];
-  const byLowerName = new Map(existing.map((s) => [s.name.toLowerCase(), s.id]));
-  const keptIds = names
-    .map((name) => byLowerName.get(name.toLowerCase()))
-    .filter((id): id is number => id !== undefined);
-
-  // Delete first (before inserts, so new rows survive the NOT IN clause).
-  if (keptIds.length) {
-    db.prepare(
-      `DELETE FROM statuses WHERE category_id = ? AND id NOT IN (${keptIds.map(() => "?").join(",")})`
-    ).run(categoryId, ...keptIds);
-  } else {
-    db.prepare("DELETE FROM statuses WHERE category_id = ?").run(categoryId);
-  }
-
-  const update = db.prepare("UPDATE statuses SET name = ?, sort_order = ? WHERE id = ?");
-  const insert = db.prepare(
-    "INSERT INTO statuses (category_id, name, sort_order) VALUES (?, ?, ?)"
-  );
-  names.forEach((name, i) => {
-    const match = byLowerName.get(name.toLowerCase());
-    if (match !== undefined) update.run(name, i, match);
-    else insert.run(categoryId, name, i);
-  });
-}
-
 export function importCategories(payload: unknown, dryRun = false): CategoriesImportResult {
   if (
     typeof payload !== "object" ||
@@ -359,16 +329,12 @@ export function importCategories(payload: unknown, dryRun = false): CategoriesIm
 
   transaction(() => {
     file.categories.forEach((item: ImportCategory, index: number) => {
-      const name = typeof item?.name === "string" ? item.name.trim() : "";
-      if (!name || name.length > 100) {
+      const clean = item ? cleanCategoryFields(item) : null;
+      if (!clean) {
         errors.push({ index, code: "NAME_REQUIRED" });
         return;
       }
-      const icon = typeof item.icon === "string" && item.icon.length <= 50 ? item.icon : "tag";
-      const color =
-        typeof item.color === "string" && /^#[0-9a-fA-F]{6}$/.test(item.color)
-          ? item.color
-          : "#8b5cf6";
+      const { name, icon, color } = clean;
       let statuses: string[] | null = null;
       if (item.statuses !== undefined) {
         if (
@@ -403,7 +369,7 @@ export function importCategories(payload: unknown, dryRun = false): CategoriesIm
           db.prepare(
             "UPDATE categories SET name = ?, icon = ?, color = ?, updated_at = datetime('now') WHERE id = ?"
           ).run(name, icon, color, existing.id);
-          if (statuses) replaceStatuses(existing.id, statuses);
+          if (statuses) replaceStatuses(existing.id, withExistingStatusIds(existing.id, statuses));
         }
         updated++;
       } else {
@@ -425,7 +391,11 @@ export function importCategories(payload: unknown, dryRun = false): CategoriesIm
               "INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)"
             )
             .run(finalSlug, name, icon, color, maxOrder + 1);
-          if (statuses) replaceStatuses(Number(info.lastInsertRowid), statuses);
+          if (statuses)
+            replaceStatuses(
+              Number(info.lastInsertRowid),
+              statuses.map((name) => ({ name }))
+            );
         }
         imported++;
       }

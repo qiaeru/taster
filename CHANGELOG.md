@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-18
+
 ### Added
 
 - Tastes can carry an optional description (a movie's synopsis, a game's pitch) shown on the detail page next to the cover image, with Markdown and spoilers supported. It is searched by the instant search, travels through JSON export and import, and feeds link previews.

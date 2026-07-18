@@ -5,7 +5,7 @@
 // aria-label as the accessible name.
 
 type TipPos = "top" | "bottom";
-type TipAlign = "center" | "end";
+type TipAlign = "center" | "start" | "end";
 
 export function tip(el: HTMLElement, text: string, pos: TipPos = "top", align: TipAlign = "center"): void {
   el.dataset.tip = text;

@@ -173,37 +173,41 @@ export function renderStats(root: HTMLElement): () => void {
       main.appendChild(avgSection.wrap);
     }
 
-    // Rating distribution
-    const byRating = section(t("stats.byRating"));
-    const ratingCounts = [5, 4, 3, 2, 1].map((r) => ({
-      r,
-      n: tastes.filter((x) => x.rating === r).length,
-    }));
-    const maxRating = Math.max(...ratingCounts.map((x) => x.n), 0);
-    for (const { r, n } of ratingCounts) {
-      byRating.body.appendChild(barRow(`${"★".repeat(r)} ${t(`rating.${r}`)}`, n, maxRating, `/?r=${r}`));
+    // Rating distribution; ratings no taste ever received are skipped.
+    const ratingCounts = [5, 4, 3, 2, 1]
+      .map((r) => ({ r, n: tastes.filter((x) => x.rating === r).length }))
+      .filter((x) => x.n > 0);
+    if (ratingCounts.length) {
+      const byRating = section(t("stats.byRating"));
+      const maxRating = Math.max(...ratingCounts.map((x) => x.n));
+      for (const { r, n } of ratingCounts) {
+        byRating.body.appendChild(barRow(`${"★".repeat(r)} ${t(`rating.${r}`)}`, n, maxRating, `/?r=${r}`));
+      }
+      main.appendChild(byRating.wrap);
     }
-    main.appendChild(byRating.wrap);
 
-    // Additions per month, last 12 months (empty months included so the
-    // timeline reads honestly).
+    // Additions per month: the 12 most recent months that actually saw an
+    // addition, oldest first. Empty months are skipped rather than shown as
+    // zero-width bars.
     const monthCounts = new Map<string, number>();
     for (const taste of tastes) {
       const key = taste.createdAt.slice(0, 7);
       monthCounts.set(key, (monthCounts.get(key) ?? 0) + 1);
     }
-    const now = new Date();
-    const months: { key: string; label: string; n: number }[] = [];
     const monthFormat = new Intl.DateTimeFormat(locale$.get(), { month: "short", year: "numeric" });
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      months.push({ key, label: monthFormat.format(d), n: monthCounts.get(key) ?? 0 });
-    }
-    if (months.some((m) => m.n > 0)) {
+    const months = [...monthCounts.entries()]
+      // "YYYY-MM" keys: lexicographic order is chronological.
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-12)
+      .map(([key, n]) => {
+        const [year, month] = key.split("-").map(Number);
+        return { key, label: monthFormat.format(new Date(year, month - 1, 1)), n };
+      });
+    if (months.length) {
       const monthSection = section(t("stats.byMonth"));
       const maxMonth = Math.max(...months.map((m) => m.n));
-      for (const m of months) monthSection.body.appendChild(barRow(m.label, m.n, maxMonth, "/"));
+      for (const m of months)
+        monthSection.body.appendChild(barRow(m.label, m.n, maxMonth, `/?m=${m.key}`));
       main.appendChild(monthSection.wrap);
     }
 

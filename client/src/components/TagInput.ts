@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Tag input: chips + free text with suggestions from the existing tags.
-// Enter or comma commits a chip, commas split a pasted "a, b, c" into one
-// chip each, Backspace on an empty input removes the last one.
+// Enter (or leaving the field) commits, splitting "a, b, c" into one chip
+// each; Backspace on an empty input removes the last one.
 
 import { icon } from "./Icon.js";
 import { t } from "../i18n/index.js";
@@ -70,7 +70,7 @@ export function tagInput(initial: string[], suggestions: string[]): TagInputWidg
   };
 
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === ",") {
+    if (e.key === "Enter") {
       e.preventDefault();
       commit();
     } else if (e.key === "Backspace" && input.value === "" && tags.length) {

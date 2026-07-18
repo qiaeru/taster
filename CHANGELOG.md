@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Tastes can carry an optional description (a movie's synopsis, a game's pitch) shown on the detail page next to the cover image, with Markdown and spoilers supported. It is searched by the instant search, travels through JSON export and import, and feeds link previews.
+- The cover image can carry an optional description: read by screen readers, shown as a tooltip when hovering the image, a natural place for credits. It travels through JSON export and import and is cleared with its image.
+- Signed-in admins get quick actions on the public list: a pencil shortcut to the edit form and a heart that toggles the favorite on the spot.
+- The admin gets a Tags tab to rename, merge or delete a tag across the whole catalog.
+- Categories can be reordered by dragging their cards in the admin; reference links, review sections and statuses gain drag handles alongside the arrows.
+- Detail pages end with a "You may also like" strip of same-category tastes and can be browsed with the left and right arrow keys.
+- The admin taste list gains a "Drafts" toggle with a live count of unpublished entries.
+- The search field gets a clear button, the chosen sort is remembered across visits like the view, and the statistics month bars link to the list filtered on that month.
+
+### Changed
+
+- The date shown in the grid and list views when sorting by date added reads "Added on ..." like the detail page, which also gains a final period.
+- The status, rating and favorites filters sit above the tag cloud, right under the category chips.
+- The statistics only list months and ratings that have at least one taste.
+- Typing a comma in the tag field no longer commits the tag: Enter (or leaving the field) splits "a, b, c" into one tag each.
+
+### Fixed
+
+- The image viewer and the confirmation dialogs open centered on the screen again instead of in the top-left corner.
+- The favorite heart is geometrically centered in its badge on grid cards.
+- On phones, pages no longer wiggle sideways (hidden tooltip bubbles were widening the page) and the list toolbar fits on two rows.
+- The "server not responding" message and its Retry button are no longer glued together.
+
 ## [0.3.0] - 2026-07-17
 
 ### Changed

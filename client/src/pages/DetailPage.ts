@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Taste detail: hero image, ratings with their labels, tags, partial date,
-// review sections (Markdown + spoilers), reference links, GPS block and the
-// external-review call-to-action. Admins get a draft banner and an edit link.
+// description, review sections (Markdown + spoilers), reference links, GPS
+// block and the external-review call-to-action. Admins get a draft banner and
+// an edit link.
 
 import type { TasteDetail } from "@taster/shared";
 import { publicApi, authApi, displayUrl, loadCatalog, ApiError, type Catalog } from "../api.js";
 import { renderHeader } from "../components/Header.js";
+import { tasteCard, cardContext } from "../components/TasteCard.js";
 import { starDisplay } from "../components/StarRating.js";
 import { geoLink } from "../components/GeoLink.js";
 import { icon } from "../components/Icon.js";
@@ -13,8 +15,10 @@ import { openLightbox } from "../components/Lightbox.js";
 import { tip } from "../components/Tooltip.js";
 import { t } from "../i18n/index.js";
 import { formatPartialDate, formatDateTime } from "../lib/format.js";
+import { isTypingTarget } from "../lib/dom.js";
 import { readListOrder } from "../lib/listOrder.js";
 import { renderMarkdown } from "../lib/markdown.js";
+import { navigate } from "../router.js";
 
 export function renderDetail(
   root: HTMLElement,
@@ -23,6 +27,7 @@ export function renderDetail(
 ): () => void {
   const id = segments[0] ?? "";
   let disposed = false;
+  let onKeyNav: ((e: KeyboardEvent) => void) | null = null;
 
   root.appendChild(renderHeader());
   const main = document.createElement("main");
@@ -122,6 +127,17 @@ export function renderDetail(
     if (neighbors.childElementCount) nav.appendChild(neighbors);
     main.appendChild(nav);
 
+    // Keyboard companion of the prev/next arrows. Inert while a modal dialog
+    // (lightbox, confirmation) is open: navigating under it would leave the
+    // orphaned dialog on top of the next page.
+    onKeyNav = (e: KeyboardEvent): void => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || index === -1) return;
+      if (isTypingTarget(e.target) || document.querySelector("dialog[open]")) return;
+      if (e.key === "ArrowLeft" && order[index - 1]) navigate(`/taste/${order[index - 1]}`);
+      else if (e.key === "ArrowRight" && order[index + 1]) navigate(`/taste/${order[index + 1]}`);
+    };
+    document.addEventListener("keydown", onKeyNav);
+
     if (!detail.published) {
       const banner = document.createElement("p");
       banner.className = "chip chip-draft detail-draft";
@@ -138,7 +154,10 @@ export function renderDetail(
       if (category) figure.style.setProperty("--cat-color", category.color);
       const img = document.createElement("img");
       img.src = displayUrl(detail.imageFile);
-      img.alt = detail.title;
+      // The optional image description doubles as alt text and native hover
+      // tooltip (credits, context); without it the title is still announced.
+      img.alt = detail.imageAlt ?? detail.title;
+      if (detail.imageAlt) img.title = detail.imageAlt;
       img.decoding = "async";
       img.width = 1600;
       img.height = 1067;
@@ -149,7 +168,7 @@ export function renderDetail(
       // the whole image on hover would be intrusive.
       zoom.setAttribute("aria-label", t("detail.image.zoom"));
       zoom.appendChild(img);
-      zoom.addEventListener("click", () => openLightbox(img.src, detail.title));
+      zoom.addEventListener("click", () => openLightbox(img.src, detail.imageAlt ?? detail.title));
       figure.appendChild(zoom);
       layout.appendChild(figure);
     }
@@ -231,6 +250,18 @@ export function renderDetail(
       head.appendChild(tagRow);
     }
 
+    if (detail.description) {
+      // Markdown, same pipeline as the review sections (spoilers included).
+      const placeholder = document.createElement("div");
+      placeholder.className = "detail-description";
+      head.appendChild(placeholder);
+      void renderMarkdown(detail.description).then((el) => {
+        if (disposed) return;
+        el.classList.add("detail-description");
+        placeholder.replaceWith(el);
+      });
+    }
+
     layout.appendChild(head);
     main.appendChild(layout);
 
@@ -303,6 +334,29 @@ export function renderDetail(
       main.appendChild(linksWrap);
     }
 
+    // "See also": same-category tastes sharing the most tags, newest first
+    // among equals. Computed from the already-cached catalog.
+    const related = catalog.tastes
+      .filter((x) => x.id !== detail.id && x.categoryId === detail.categoryId)
+      .map((x) => ({ x, shared: x.tags.filter((tag) => detail.tags.includes(tag)).length }))
+      .sort((a, b) => b.shared - a.shared || b.x.createdAt.localeCompare(a.x.createdAt))
+      .slice(0, 4)
+      .map((r) => r.x);
+    if (related.length) {
+      const relatedWrap = document.createElement("section");
+      relatedWrap.className = "detail-related";
+      const h2 = document.createElement("h2");
+      h2.className = "detail-subhead";
+      h2.textContent = t("detail.related");
+      relatedWrap.appendChild(h2);
+      const ctx = cardContext(catalog.categories);
+      const grid = document.createElement("div");
+      grid.className = "card-grid card-grid-related";
+      for (const taste of related) grid.appendChild(tasteCard(taste, ctx));
+      relatedWrap.appendChild(grid);
+      main.appendChild(relatedWrap);
+    }
+
     const added = document.createElement("p");
     added.className = "muted detail-added";
     added.textContent = t("detail.addedOn", { date: formatDateTime(detail.createdAt) });
@@ -311,6 +365,7 @@ export function renderDetail(
 
   return () => {
     disposed = true;
+    if (onKeyNav) document.removeEventListener("keydown", onKeyNav);
     document.title = "Taster";
   };
 }

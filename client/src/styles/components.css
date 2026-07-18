@@ -264,17 +264,27 @@
     font-weight: 500;
     line-height: 1.35;
     white-space: nowrap;
+    /* Hidden bubbles must not occupy layout space: near the screen edge they
+       widened the page by ~10px on mobile. `display` transitions discretely
+       (allow-discrete + @starting-style keep the fade); older browsers just
+       lose the fade, not the tooltip. */
+    display: none;
     opacity: 0;
-    visibility: hidden;
     pointer-events: none;
     z-index: 60;
-    transition: opacity 0.15s ease, visibility 0.15s ease;
+    transition: opacity 0.15s ease, display 0.15s ease allow-discrete;
   }
   [data-tip]:hover::after,
   [data-tip]:focus-visible::after {
+    display: block;
     opacity: 1;
-    visibility: visible;
     transition-delay: 0.35s;
+  }
+  @starting-style {
+    [data-tip]:hover::after,
+    [data-tip]:focus-visible::after {
+      opacity: 0;
+    }
   }
   [data-tip-pos="bottom"]::after {
     bottom: auto;
@@ -285,6 +295,28 @@
     right: 0;
     translate: 0 0;
   }
+  [data-tip-align="start"]::after {
+    left: 0;
+    right: auto;
+    translate: 0 0;
+  }
+
+  /* ---- drag-and-drop reorder (see lib/dragReorder.ts) ---- */
+  .drag-handle {
+    cursor: grab;
+    touch-action: none;
+  }
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+  [data-dragging="true"] {
+    opacity: 0.4;
+  }
+  [data-drop-target="true"] {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
 
   .error-box {
     padding: 0.75rem 1rem;
@@ -292,6 +324,10 @@
     background: color-mix(in srgb, var(--danger) 10%, transparent);
     color: var(--danger);
     font-size: 0.9rem;
+  }
+  /* "Server not responding" + retry: breathing room before the button. */
+  .error-box + .btn {
+    margin-top: 0.75rem;
   }
 
   /* ---- header ---- */
@@ -427,6 +463,21 @@
     position: relative;
     flex: 1 1 14rem;
   }
+  .search-clear {
+    position: absolute;
+    right: 0.35rem;
+    top: 50%;
+    translate: 0 -50%;
+    padding: 0.4rem;
+  }
+  /* The clear button exists only while the field holds text; keyed off the
+     placeholder so no JS has to sync it. */
+  .search input:placeholder-shown + .search-clear {
+    display: none;
+  }
+  .search input:not(:placeholder-shown) {
+    padding-right: 2.5rem;
+  }
   /* The sort select carries an arrows icon (same recipe as the search field)
      so it reads as sorting, not filtering. */
   .sort-wrap {
@@ -447,6 +498,20 @@
   }
   .sort-wrap .select {
     padding-left: 2.4rem;
+  }
+  /* Narrow screens: drop the decorative sort icon and tighten the gaps so the
+     sort, reverse, view and random controls share one row instead of leaving
+     the random die orphaned on its own line. */
+  @media (max-width: 479px) {
+    .toolbar {
+      gap: 0.4rem;
+    }
+    .sort-icon {
+      display: none;
+    }
+    .sort-wrap .select {
+      padding-left: 0.8rem;
+    }
   }
   .rev-btn {
     height: 2.75rem;
@@ -570,7 +635,18 @@
     grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
     gap: 1rem;
   }
+  /* "See also" on the detail page: smaller companion tiles. */
+  .detail-related {
+    margin-top: 2rem;
+  }
+  .detail-related .detail-subhead {
+    margin-bottom: 0.75rem;
+  }
+  .card-grid-related {
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  }
   .taste-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     border-radius: 1rem;
@@ -608,18 +684,69 @@
     justify-content: center;
     color: color-mix(in srgb, var(--cat-color, var(--accent)) 55%, var(--fg-muted));
   }
-  .card-heart {
+  /* The card body is one stretched link; badges and the admin edit shortcut
+     sit above it (z-index) so they stay hoverable and clickable. */
+  .card-link {
+    color: inherit;
+    text-decoration: none;
+  }
+  .card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+  .card-link:focus-visible {
+    outline: none;
+  }
+  .taste-card:has(.card-link:focus-visible),
+  .taste-row:has(.card-link:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .card-heart,
+  .card-edit {
     position: absolute;
     top: 0.5rem;
-    right: 0.5rem;
-    display: grid;
-    place-items: center;
     width: 1.75rem;
     height: 1.75rem;
     border-radius: 999px;
     background: color-mix(in srgb, var(--bg-elev) 85%, transparent);
-    color: var(--heart);
     backdrop-filter: blur(4px);
+    z-index: 1;
+  }
+  .card-heart {
+    right: 0.5rem;
+    color: var(--heart);
+  }
+  /* Visitor badge (span): let clicks fall through to the stretched link. */
+  .card-heart:not(.card-heart-toggle) {
+    pointer-events: none;
+  }
+  .card-edit {
+    left: 0.5rem;
+    color: var(--fg-muted);
+  }
+  .card-edit:hover {
+    color: var(--accent);
+  }
+  .card-heart-toggle {
+    cursor: pointer;
+  }
+  .card-heart-toggle[data-active="false"] {
+    color: var(--fg-muted);
+  }
+  .card-heart-toggle:hover {
+    color: var(--heart);
+  }
+  .card-heart .icon,
+  .card-edit .icon {
+    /* Transform-based centering: box-model centering rounds the icon onto
+       whole pixels, which reads as off-center at fractional card widths and
+       non-integer display scales; a translate keeps it geometric. */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
   .card-body {
     display: flex;
@@ -688,6 +815,7 @@
     gap: 0.5rem;
   }
   .taste-row {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.8rem;
@@ -752,6 +880,14 @@
     display: flex;
     align-items: center;
     align-self: center;
+    gap: 0.25rem;
+  }
+  .row-action {
+    position: relative;
+    z-index: 1;
+  }
+  .row-heart-toggle[data-active="true"] {
+    color: var(--heart);
   }
 
   /* ---- tier list ---- */
@@ -1075,6 +1211,11 @@
   }
 
   /* ---- toasts & dialogs ---- */
+  /* Tailwind's preflight resets every margin, including the UA `margin: auto`
+     that centers a modal <dialog>; restore it or dialogs open top-left. */
+  dialog {
+    margin: auto;
+  }
   .toaster {
     position: fixed;
     bottom: 1rem;
@@ -1575,6 +1716,14 @@
   }
   .category-card .dialog-actions {
     justify-content: flex-start;
+  }
+  .tag-admin-list {
+    max-width: 34rem;
+  }
+  .tag-usage {
+    flex: none;
+    font-size: 0.8rem;
+    white-space: nowrap;
   }
   .category-new {
     margin-bottom: 1.5rem;

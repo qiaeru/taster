@@ -11,4 +11,4 @@ Accessibility choices baked into the UI:
 - **Color and contrast**: both light and dark schemes keep text on `--bg`/`--bg-elev` at WCAG AA contrast; category colors are always paired with an icon and a text label, never the only carrier of meaning.
 - **Motion**: page changes use a short cross-fade (View Transitions where supported), with subtle touches like a loading-skeleton shimmer and a die roll on the random button. Everything is disabled under `prefers-reduced-motion: reduce`, and there is no autoplaying or parallax motion.
 
-Known limits: the tag suggestion list relies on the native `datalist`, whose screen-reader experience varies by browser, and drag-free reordering (up/down buttons) was chosen over drag-and-drop precisely for keyboard operability.
+Known limits: the tag suggestion list relies on the native `datalist`, whose screen-reader experience varies by browser. Reorderable lists offer mouse drag handles as a convenience, but the up/down buttons remain on every list so keyboard and touch users always have an equivalent path; the handles themselves are hidden from assistive tech (`aria-hidden`, unfocusable).

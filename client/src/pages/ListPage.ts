@@ -5,15 +5,17 @@
 // cached catalog; the state mirrors into the query string so any view is
 // shareable.
 
-import type { Category, Rating, Status, TasteSummary } from "@taster/shared";
-import { loadCatalog, type Catalog } from "../api.js";
+import type { Rating, TasteSummary } from "@taster/shared";
+import { adminApi, authApi, loadCatalog, type Catalog } from "../api.js";
 import { renderHeader } from "../components/Header.js";
-import { tasteCard, tasteRow, type CardContext } from "../components/TasteCard.js";
+import { tasteCard, tasteRow, cardContext, type CardContext } from "../components/TasteCard.js";
 import { starDisplay } from "../components/StarRating.js";
 import { icon } from "../components/Icon.js";
 import { selectMenu } from "../components/Select.js";
 import { tip } from "../components/Tooltip.js";
+import { toast } from "../components/Toaster.js";
 import { t } from "../i18n/index.js";
+import { isTypingTarget } from "../lib/dom.js";
 import { formatDateTime, formatPartialDate, searchFold } from "../lib/format.js";
 import { rememberListOrder } from "../lib/listOrder.js";
 import { navigate, replaceQuery } from "../router.js";
@@ -29,24 +31,30 @@ interface ListState {
   minRating: number; // "N stars and up" (stats "rated" tile); URL-only, no select
   rating: number | null; // exact rating, driven by the filter-bar select
   favorites: boolean;
+  month: string | null; // "YYYY-MM" added-in filter (stats month bars); URL-only
   sort: SortKey;
   rev: boolean; // reversed sort direction
   view: ViewKey;
 }
 
 const VIEW_KEY = "taster:view";
+const SORT_KEY = "taster:sort";
 
 // First cards load eagerly at high priority: over HTTP/1.1 a lazy grid drains
 // ~6 thumbs at a time and the whole fold pops in as one late batch.
 const EAGER_CARDS = 8;
 
 function readState(params: URLSearchParams): ListState {
+  // Like the view, the sort is remembered across visits; an explicit URL
+  // param (shared link) still wins.
   let sort = params.get("sort") as SortKey | null;
-  const view = params.get("view") ?? readSavedView();
+  const view = params.get("view") ?? readSaved(VIEW_KEY);
   // The dedicated tier view is gone; old ?view=tiers links keep their meaning
   // through the rating sort, which renders as a tier list.
   if (params.get("view") === "tiers" && !sort) sort = "rating";
+  if (!sort) sort = readSaved(SORT_KEY) as SortKey | null;
   const exact = Number(params.get("r"));
+  const month = params.get("m");
   return {
     q: params.get("q") ?? "",
     cat: params.get("cat"),
@@ -55,15 +63,16 @@ function readState(params: URLSearchParams): ListState {
     minRating: params.get("min") ? Number(params.get("min")) : 0,
     rating: exact >= 1 && exact <= 5 ? exact : null,
     favorites: params.get("fav") === "1",
+    month: month && /^\d{4}-\d{2}$/.test(month) ? month : null,
     sort: sort && ["recent", "date", "rating", "title"].includes(sort) ? sort : "recent",
     rev: params.get("rev") === "1",
     view: ["grid", "compact"].includes(view ?? "") ? (view as ViewKey) : "grid",
   };
 }
 
-function readSavedView(): string | null {
+function readSaved(key: string): string | null {
   try {
-    return localStorage.getItem(VIEW_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
@@ -78,12 +87,23 @@ function writeState(state: ListState): void {
   if (state.minRating > 0) params.set("min", String(state.minRating));
   if (state.rating !== null) params.set("r", String(state.rating));
   if (state.favorites) params.set("fav", "1");
+  if (state.month) params.set("m", state.month);
   if (state.sort !== "recent") params.set("sort", state.sort);
   if (state.rev) params.set("rev", "1");
   if (state.view !== "grid") params.set("view", state.view);
   replaceQuery(params);
   try {
     localStorage.setItem(VIEW_KEY, state.view);
+  } catch {
+    /* ignore */
+  }
+}
+
+// Saved only when the visitor picks a sort themselves: a shared ?sort= link
+// must not overwrite their preference just by being opened.
+function saveSort(sort: SortKey): void {
+  try {
+    localStorage.setItem(SORT_KEY, sort);
   } catch {
     /* ignore */
   }
@@ -118,6 +138,21 @@ function sortTastes(list: TasteSummary[], sort: SortKey, rev = false): TasteSumm
   return sorted;
 }
 
+// Folded search haystacks, computed once per taste object: searchFold runs
+// Unicode normalization over up to 5000 chars of description, too heavy to
+// redo for every taste on every debounced keystroke.
+const foldCache = new WeakMap<TasteSummary, string>();
+function foldedHaystack(taste: TasteSummary): string {
+  let folded = foldCache.get(taste);
+  if (folded === undefined) {
+    folded = searchFold(
+      taste.title + " " + taste.tags.join(" ") + " " + (taste.description ?? "")
+    );
+    foldCache.set(taste, folded);
+  }
+  return folded;
+}
+
 function applyFilters(catalog: Catalog, state: ListState): TasteSummary[] {
   const category = state.cat ? catalog.categories.find((c) => c.slug === state.cat) : null;
   const fold = searchFold(state.q.trim());
@@ -128,10 +163,8 @@ function applyFilters(catalog: Catalog, state: ListState): TasteSummary[] {
     if (state.rating !== null && taste.rating !== state.rating) return false;
     if (state.status !== null && taste.statusId !== state.status) return false;
     if (state.tags.length && !state.tags.every((tag) => taste.tags.includes(tag))) return false;
-    if (fold) {
-      const haystack = searchFold(taste.title + " " + taste.tags.join(" "));
-      if (!haystack.includes(fold)) return false;
-    }
+    if (state.month && !taste.createdAt.startsWith(state.month)) return false;
+    if (fold && !foldedHaystack(taste).includes(fold)) return false;
     return true;
   });
 }
@@ -141,18 +174,15 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
   let catalog: Catalog | null = null;
   let disposed = false;
   let tagsExpanded = false;
+  // Signed-in admins get an edit shortcut on every card and row.
+  let editable = false;
+  // Favorite toggles currently waiting for their server response.
+  const pendingFavorites = new Set<string>();
 
   // "/" jumps to the search field, unless the visitor is already typing.
   const onSlashKey = (e: KeyboardEvent): void => {
     if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
-    const target = e.target as HTMLElement;
-    if (
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement ||
-      target instanceof HTMLSelectElement ||
-      target.isContentEditable
-    )
-      return;
+    if (isTypingTarget(e.target)) return;
     const search = main.querySelector<HTMLInputElement>(".search input");
     if (!search) return;
     e.preventDefault();
@@ -213,10 +243,14 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
   main.appendChild(loading);
 
   const boot = (force: boolean): void => {
-    loadCatalog(force)
-      .then((data) => {
+    Promise.all([
+      loadCatalog(force),
+      authApi.session().catch(() => null),
+    ])
+      .then(([data, session]) => {
         if (disposed) return;
         catalog = data;
+        editable = Boolean(session?.authenticated && !session.mustChangePassword);
         main.innerHTML = "";
         build();
       })
@@ -264,6 +298,21 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       searchDebounce = window.setTimeout(update, 150);
     });
     searchWrap.appendChild(search);
+    // Visibility is pure CSS (hidden while :placeholder-shown), so no state
+    // sync can ever drift.
+    const searchClear = document.createElement("button");
+    searchClear.type = "button";
+    searchClear.className = "icon-btn search-clear";
+    searchClear.setAttribute("aria-label", t("search.clear"));
+    tip(searchClear, t("search.clear"), "bottom");
+    searchClear.appendChild(icon("x-mark", "icon icon-sm"));
+    searchClear.addEventListener("click", () => {
+      search.value = "";
+      state.q = "";
+      update();
+      search.focus();
+    });
+    searchWrap.appendChild(searchClear);
     toolbar.appendChild(searchWrap);
 
     // Sort
@@ -281,6 +330,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       label: t("sort.label"),
       onChange: (value) => {
         state.sort = value as SortKey;
+        saveSort(state.sort);
         // Each sort comes back in its natural direction.
         state.rev = false;
         update();
@@ -436,55 +486,9 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     filterBar.innerHTML = "";
     const category = state.cat ? catalog.categories.find((c) => c.slug === state.cat) : null;
 
-    // Tag chips: tags actually present in the active scope.
-    const scope = catalog.tastes.filter((x) => !category || x.categoryId === category.id);
-    const tagCounts = new Map<string, number>();
-    for (const taste of scope)
-      for (const tag of taste.tags) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
-    const allTags = [...tagCounts.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([name]) => name);
-    const topTags = tagsExpanded ? allTags : allTags.slice(0, 12);
-    // Selected tags always stay visible even when outside the top list.
-    for (const selected of state.tags) if (!topTags.includes(selected)) topTags.unshift(selected);
-
-    if (topTags.length) {
-      const group = document.createElement("div");
-      group.className = "tag-filter";
-      group.setAttribute("role", "group");
-      group.setAttribute("aria-label", t("filters.tags"));
-      for (const tag of topTags) {
-        const chip = document.createElement("button");
-        chip.type = "button";
-        chip.className = "chip chip-toggle";
-        chip.dataset.active = String(state.tags.includes(tag));
-        chip.setAttribute("aria-pressed", String(state.tags.includes(tag)));
-        chip.textContent = tag;
-        chip.appendChild(chipCount(tagCounts.get(tag) ?? 0));
-        chip.addEventListener("click", () => {
-          state.tags = state.tags.includes(tag)
-            ? state.tags.filter((x) => x !== tag)
-            : [...state.tags, tag];
-          update();
-        });
-        group.appendChild(chip);
-      }
-      if (allTags.length > 12) {
-        const more = document.createElement("button");
-        more.type = "button";
-        more.className = "chip chip-toggle";
-        more.textContent = tagsExpanded
-          ? t("filters.lessTags")
-          : t("filters.moreTags", { count: allTags.length - 12 });
-        more.addEventListener("click", () => {
-          tagsExpanded = !tagsExpanded;
-          update();
-        });
-        group.appendChild(more);
-      }
-      filterBar.appendChild(group);
-    }
-
+    // Structured filters (status, rating, favorites) come first, right under
+    // the category chips; the open-ended tag cloud reads as its own block
+    // below them.
     const controls = document.createElement("div");
     controls.className = "filter-controls";
 
@@ -551,6 +555,26 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       controls.appendChild(ratingSel.el);
     }
 
+    // "Added in <month>" chip, reached from the statistics month bars.
+    if (state.month) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip chip-toggle";
+      chip.dataset.active = "true";
+      chip.setAttribute("aria-pressed", "true");
+      chip.setAttribute("aria-label", t("filters.removeMonth"));
+      tip(chip, t("filters.removeMonth"));
+      chip.appendChild(
+        document.createTextNode(t("filters.monthChip", { month: formatPartialDate(state.month) }))
+      );
+      chip.appendChild(icon("x-mark", "icon icon-sm"));
+      chip.addEventListener("click", () => {
+        state.month = null;
+        update();
+      });
+      controls.appendChild(chip);
+    }
+
     // Favorites toggle
     const fav = document.createElement("button");
     fav.type = "button";
@@ -573,7 +597,8 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       state.status !== null ||
       state.minRating > 0 ||
       state.rating !== null ||
-      state.favorites;
+      state.favorites ||
+      state.month !== null;
     if (hasFilters) {
       const clear = document.createElement("button");
       clear.type = "button";
@@ -585,6 +610,55 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     }
 
     filterBar.appendChild(controls);
+
+    // Tag chips: tags actually present in the active scope.
+    const scope = catalog.tastes.filter((x) => !category || x.categoryId === category.id);
+    const tagCounts = new Map<string, number>();
+    for (const taste of scope)
+      for (const tag of taste.tags) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+    const allTags = [...tagCounts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([name]) => name);
+    const topTags = tagsExpanded ? allTags : allTags.slice(0, 12);
+    // Selected tags always stay visible even when outside the top list.
+    for (const selected of state.tags) if (!topTags.includes(selected)) topTags.unshift(selected);
+
+    if (topTags.length) {
+      const group = document.createElement("div");
+      group.className = "tag-filter";
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", t("filters.tags"));
+      for (const tag of topTags) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip chip-toggle";
+        chip.dataset.active = String(state.tags.includes(tag));
+        chip.setAttribute("aria-pressed", String(state.tags.includes(tag)));
+        chip.textContent = tag;
+        chip.appendChild(chipCount(tagCounts.get(tag) ?? 0));
+        chip.addEventListener("click", () => {
+          state.tags = state.tags.includes(tag)
+            ? state.tags.filter((x) => x !== tag)
+            : [...state.tags, tag];
+          update();
+        });
+        group.appendChild(chip);
+      }
+      if (allTags.length > 12) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "chip chip-toggle";
+        more.textContent = tagsExpanded
+          ? t("filters.lessTags")
+          : t("filters.moreTags", { count: allTags.length - 12 });
+        more.addEventListener("click", () => {
+          tagsExpanded = !tagsExpanded;
+          update();
+        });
+        group.appendChild(more);
+      }
+      filterBar.appendChild(group);
+    }
   }
 
   function resetFilters(): void {
@@ -595,6 +669,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     state.minRating = 0;
     state.rating = null;
     state.favorites = false;
+    state.month = null;
     const search = main.querySelector<HTMLInputElement>(".search input");
     if (search) search.value = "";
     update();
@@ -605,10 +680,42 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     results.innerHTML = "";
 
     const ctx: CardContext = {
-      categories: new Map(catalog.categories.map((c) => [c.id, c])),
-      statuses: new Map<number, Status>(
-        catalog.categories.flatMap((c: Category) => c.statuses.map((s) => [s.id, s] as const))
-      ),
+      ...cardContext(catalog.categories),
+      editable,
+      onToggleFavorite: editable
+        ? (taste) => {
+            // One flight per taste: a double-click must not send the same
+            // target state twice and leave the flag inverted.
+            if (pendingFavorites.has(taste.id)) return;
+            pendingFavorites.add(taste.id);
+            adminApi
+              .setFavorite(taste.id, !taste.favorite)
+              .then((res) => {
+                // The cached catalog holds the same object: patch in place so
+                // every open view (and the fav filter) sees the new state.
+                taste.favorite = res.favorite;
+                if (state.favorites) {
+                  // The entry may have to leave the filtered list.
+                  update();
+                } else {
+                  // Cheap path: repaint just this taste's heart(s) instead of
+                  // rebuilding the whole grid (lazy images would reload).
+                  for (const heart of results.querySelectorAll<HTMLButtonElement>(
+                    `[data-taste-id="${taste.id}"]`
+                  )) {
+                    heart.dataset.active = String(taste.favorite);
+                    heart.setAttribute("aria-pressed", String(taste.favorite));
+                    heart.innerHTML = "";
+                    heart.appendChild(
+                      icon(taste.favorite ? "heart-solid-20" : "heart", "icon icon-sm")
+                    );
+                  }
+                }
+              })
+              .catch(() => toast(t("error.generic"), "error"))
+              .finally(() => pendingFavorites.delete(taste.id));
+          }
+        : undefined,
     };
 
     const filtered = applyFilters(catalog, state);
@@ -691,8 +798,10 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     }
 
     // Show the date driving the active sort, so the order stays legible; the
-    // title sort reads on its own.
-    if (state.sort === "recent") ctx.rowDate = (x) => formatDateTime(x.createdAt);
+    // title sort reads on its own. "Added on" says which date this is; the
+    // reference date needs no label, it reads as the work's own date.
+    if (state.sort === "recent")
+      ctx.rowDate = (x) => t("card.addedOn", { date: formatDateTime(x.createdAt) });
     else if (state.sort === "date")
       ctx.rowDate = (x) => (x.refDate ? formatPartialDate(x.refDate) : null);
     const sorted = sortTastes(filtered, state.sort, state.rev);

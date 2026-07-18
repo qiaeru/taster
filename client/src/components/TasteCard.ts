@@ -19,6 +19,57 @@ export interface CardContext {
   draft?: boolean;
   /** Date to display for the active sort (null = none). */
   rowDate?: (taste: TasteSummary) => string | null;
+  /** Show an edit shortcut on each entry (signed-in admin only). */
+  editable?: boolean;
+  /** Admin quick action: flip the favorite flag without opening the form.
+   *  Only ever set for a signed-in admin; its presence turns hearts into
+   *  toggles. */
+  onToggleFavorite?: (taste: TasteSummary) => void;
+}
+
+/** Base CardContext (category/status lookup maps) from the catalog. */
+export function cardContext(categories: Category[]): CardContext {
+  return {
+    categories: new Map(categories.map((c) => [c.id, c])),
+    statuses: new Map<number, Status>(
+      categories.flatMap((c) => c.statuses.map((s) => [s.id, s] as const))
+    ),
+  };
+}
+
+// Heart as a toggle for admins: shows the state on every entry and flips it
+// in place. Also layered above the stretched link.
+function favoriteToggle(
+  taste: TasteSummary,
+  ctx: CardContext,
+  className: string
+): HTMLElement {
+  const heart = document.createElement("button");
+  heart.type = "button";
+  heart.className = className;
+  // Lets the list patch every rendered heart of this taste in place.
+  heart.dataset.tasteId = taste.id;
+  heart.dataset.active = String(taste.favorite);
+  heart.setAttribute("aria-pressed", String(taste.favorite));
+  heart.setAttribute("aria-label", t("card.favorite"));
+  tip(heart, t("card.favorite"), "bottom", "end");
+  heart.appendChild(icon(taste.favorite ? "heart-solid-20" : "heart", "icon icon-sm"));
+  heart.addEventListener("click", () => ctx.onToggleFavorite?.(taste));
+  return heart;
+}
+
+// Edit shortcut for admins. A real link layered above the card's stretched
+// link, so cards stay valid HTML (no nested anchors).
+function editShortcut(id: string, className: string): HTMLElement {
+  const edit = document.createElement("a");
+  edit.className = className;
+  edit.href = `/admin/taste/${id}/edit`;
+  edit.setAttribute("aria-label", t("detail.edit"));
+  // Start-aligned: the card clips overflow and the badge sits near its left
+  // edge, so a centered bubble would be cropped.
+  tip(edit, t("detail.edit"), "bottom", "start");
+  edit.appendChild(icon("pencil", "icon icon-sm"));
+  return edit;
 }
 
 function categoryBadge(category: Category | undefined): HTMLElement {
@@ -32,7 +83,12 @@ function categoryBadge(category: Category | undefined): HTMLElement {
   return badge;
 }
 
-function media(taste: TasteSummary, category: Category | undefined, eager: boolean): HTMLElement {
+function media(
+  taste: TasteSummary,
+  category: Category | undefined,
+  eager: boolean,
+  ctx: CardContext
+): HTMLElement {
   const wrap = document.createElement("div");
   wrap.className = "card-media";
   if (category) wrap.style.setProperty("--cat-color", category.color);
@@ -55,13 +111,14 @@ function media(taste: TasteSummary, category: Category | undefined, eager: boole
     wrap.classList.add("card-media-placeholder");
     wrap.appendChild(icon(category?.icon ?? "tag", "icon icon-xl"));
   }
-  if (taste.favorite) {
+  if (ctx.onToggleFavorite) {
+    wrap.appendChild(favoriteToggle(taste, ctx, "card-heart card-heart-toggle"));
+  } else if (taste.favorite) {
+    // Decorative badge for visitors; pointer-events: none in CSS so clicks
+    // fall through to the card's stretched link instead of dying on it.
     const heart = document.createElement("span");
     heart.className = "card-heart";
     heart.setAttribute("aria-label", t("card.favorite"));
-    // Downward, right-aligned: the card clips overflow and the badge sits in
-    // its top-right corner.
-    tip(heart, t("card.favorite"), "bottom", "end");
     heart.appendChild(icon("heart-solid-20", "icon icon-sm"));
     wrap.appendChild(heart);
   }
@@ -72,18 +129,23 @@ export function tasteCard(taste: TasteSummary, ctx: CardContext, eager = false):
   const category = ctx.categories.get(taste.categoryId);
   const status = taste.statusId !== null ? ctx.statuses.get(taste.statusId) : undefined;
 
-  const card = document.createElement("a");
+  const card = document.createElement("div");
   card.className = "taste-card";
-  card.href = `/taste/${taste.id}`;
 
-  card.appendChild(media(taste, category, eager));
+  const mediaEl = media(taste, category, eager, ctx);
+  if (ctx.editable) mediaEl.appendChild(editShortcut(taste.id, "card-edit"));
+  card.appendChild(mediaEl);
 
   const body = document.createElement("div");
   body.className = "card-body";
 
   const title = document.createElement("h3");
   title.className = "card-title";
-  title.textContent = taste.title;
+  const link = document.createElement("a");
+  link.className = "card-link";
+  link.href = `/taste/${taste.id}`;
+  link.textContent = taste.title;
+  title.appendChild(link);
   body.appendChild(title);
 
   const metaRow = document.createElement("div");
@@ -136,9 +198,8 @@ export function tasteRow(taste: TasteSummary, ctx: CardContext): HTMLElement {
   const category = ctx.categories.get(taste.categoryId);
   const status = taste.statusId !== null ? ctx.statuses.get(taste.statusId) : undefined;
 
-  const row = document.createElement("a");
+  const row = document.createElement("div");
   row.className = "taste-row";
-  row.href = `/taste/${taste.id}`;
 
   const thumb = document.createElement("div");
   thumb.className = "row-media";
@@ -165,8 +226,13 @@ export function tasteRow(taste: TasteSummary, ctx: CardContext): HTMLElement {
   main.className = "row-main";
   const title = document.createElement("span");
   title.className = "row-title";
-  title.textContent = taste.title;
-  if (taste.favorite) {
+  const link = document.createElement("a");
+  link.className = "card-link";
+  link.href = `/taste/${taste.id}`;
+  link.textContent = taste.title;
+  title.appendChild(link);
+  // Admins get the heart as a toggle in row-right instead (next to the pencil).
+  if (taste.favorite && !ctx.onToggleFavorite) {
     const heart = document.createElement("span");
     heart.className = "row-heart";
     // No tooltip here: the row title clips overflow and would swallow the
@@ -198,6 +264,10 @@ export function tasteRow(taste: TasteSummary, ctx: CardContext): HTMLElement {
   const right = document.createElement("div");
   right.className = "row-right";
   if (taste.rating) right.appendChild(starDisplay(taste.rating, "sm"));
+  if (ctx.onToggleFavorite) {
+    right.appendChild(favoriteToggle(taste, ctx, "icon-btn row-action row-heart-toggle"));
+  }
+  if (ctx.editable) right.appendChild(editShortcut(taste.id, "icon-btn row-action"));
   row.appendChild(right);
 
   return row;

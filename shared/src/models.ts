@@ -67,6 +67,8 @@ export interface TasteSummary {
   imageFile: string | null;
   /** Null = centered. Cards translate it to CSS object-position. */
   imageFocus: ImageFocus | null;
+  /** Markdown synopsis (spoilers supported); also searched by the list. */
+  description: string | null;
   refDate: PartialDate | null;
   favorite: boolean;
   createdAt: string;
@@ -80,6 +82,8 @@ export interface AdminTasteSummary extends TasteSummary {
 
 /** Full payload returned by GET /api/tastes/:id. */
 export interface TasteDetail extends TasteSummary {
+  /** Alt text / credits of the cover image; also the hover tooltip. */
+  imageAlt: string | null;
   location: GeoPoint | null;
   externalReviewUrl: string | null;
   sections: ReviewSection[];
@@ -95,9 +99,11 @@ export interface TasteInput {
   rating?: Rating | null;
   statusId?: number | null;
   tags?: string[];
+  description?: string | null;
   refDate?: PartialDate | null;
   location?: GeoPoint | null;
   imageFocus?: ImageFocus | null;
+  imageAlt?: string | null;
   externalReviewUrl?: string | null;
   published?: boolean;
   favorite?: boolean;
@@ -110,7 +116,6 @@ export interface CategoryInput {
   slug?: string;
   icon?: string;
   color?: string;
-  sortOrder?: number;
 }
 
 export interface StatusesInput {

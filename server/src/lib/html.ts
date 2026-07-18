@@ -57,6 +57,18 @@ function metaTags(og: OgData): string {
   return lines.join("\n    ");
 }
 
+// Markdown flattened to preview text (og:description is plain text).
+function plainExcerpt(md: string): string | null {
+  const text = md
+    // Never leak spoilers into previews. Non-greedy across any character:
+    // a spoiler whose text itself contains a "|" must still be stripped.
+    .replace(/\|\|[\s\S]*?\|\|/g, "")
+    .replace(/[#*_`>[\]()!-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, 200) : null;
+}
+
 // First plain-text-ish excerpt of a taste's review, for og:description.
 function excerptFor(tasteId: string): string | null {
   const row = getDb()
@@ -65,15 +77,7 @@ function excerptFor(tasteId: string): string | null {
        ORDER BY sort_order LIMIT 1`
     )
     .get(tasteId) as { body_md: string } | undefined;
-  if (!row) return null;
-  const text = row.body_md
-    // Never leak spoilers into previews. Non-greedy across any character:
-    // a spoiler whose text itself contains a "|" must still be stripped.
-    .replace(/\|\|[\s\S]*?\|\|/g, "")
-    .replace(/[#*_`>[\]()!-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text ? text.slice(0, 200) : null;
+  return row ? plainExcerpt(row.body_md) : null;
 }
 
 const TASTE_PATH = /^\/taste\/([0-9a-f-]{36})(?:\?.*)?$/i;
@@ -87,13 +91,18 @@ export function renderIndexHtml(url: string): string {
   if (match) {
     const row = getDb()
       .prepare(
-        "SELECT id, title, image_file AS imageFile FROM tastes WHERE id = ? AND published = 1"
+        `SELECT id, title, description, image_file AS imageFile
+         FROM tastes WHERE id = ? AND published = 1`
       )
-      .get(match[1]) as { id: string; title: string; imageFile: string | null } | undefined;
+      .get(match[1]) as
+      | { id: string; title: string; description: string | null; imageFile: string | null }
+      | undefined;
     if (row) {
+      // The taste's own synopsis beats a review excerpt as preview text.
+      const synopsis = row.description ? plainExcerpt(row.description) : null;
       const og = metaTags({
         title: `${row.title} · Taster`,
-        description: excerptFor(row.id) || defaultDescription,
+        description: synopsis || excerptFor(row.id) || defaultDescription,
         imagePath: row.imageFile ? `/uploads/${row.imageFile}` : null,
         urlPath: `/taste/${row.id}`,
       });

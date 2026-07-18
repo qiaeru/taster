@@ -16,6 +16,7 @@ interface SummaryRow {
   rating: number | null;
   statusId: number | null;
   imageFile: string | null;
+  description: string | null;
   refDate: string | null;
   favorite: number;
   published: number;
@@ -29,7 +30,7 @@ interface SummaryRow {
 const SUMMARY_SELECT = `
   SELECT t.id, t.title, t.category_id AS categoryId, t.rating, t.status_id AS statusId,
          t.image_file AS imageFile, t.focus_x AS focusX, t.focus_y AS focusY,
-         t.ref_date AS refDate, t.favorite, t.published,
+         t.description, t.ref_date AS refDate, t.favorite, t.published,
          t.created_at AS createdAt, t.updated_at AS updatedAt,
          (SELECT GROUP_CONCAT(tg.name, char(31)) FROM taste_tags tt
             JOIN tags tg ON tg.id = tt.tag_id WHERE tt.taste_id = t.id) AS tags
@@ -51,6 +52,7 @@ function toSummary(row: SummaryRow): TasteSummary {
     imageFile: row.imageFile,
     imageFocus:
       row.focusX !== null && row.focusY !== null ? { x: row.focusX, y: row.focusY } : null,
+    description: row.description,
     refDate: row.refDate,
     favorite: row.favorite === 1,
     createdAt: row.createdAt,
@@ -77,13 +79,18 @@ export function listAdminSummaries(): AdminTasteSummary[] {
 
 const DETAIL_SELECT = SUMMARY_SELECT.replace(
   "FROM tastes t",
-  ", t.lat, t.lng, t.external_review_url AS externalReviewUrl\n  FROM tastes t"
+  ", t.image_alt AS imageAlt, t.lat, t.lng, t.external_review_url AS externalReviewUrl\n  FROM tastes t"
 );
 
 export function getTasteDetail(id: string): TasteDetail | null {
   const db = getDb();
   const row = db.prepare(`${DETAIL_SELECT} WHERE t.id = ?`).get(id) as unknown as
-    | (SummaryRow & { lat: number | null; lng: number | null; externalReviewUrl: string | null })
+    | (SummaryRow & {
+        imageAlt: string | null;
+        lat: number | null;
+        lng: number | null;
+        externalReviewUrl: string | null;
+      })
     | undefined;
   if (!row) return null;
   const sections = db
@@ -96,6 +103,7 @@ export function getTasteDetail(id: string): TasteDetail | null {
     .all(id) as unknown as { label: string; url: string }[];
   return {
     ...toSummary(row),
+    imageAlt: row.imageAlt,
     location: row.lat !== null && row.lng !== null ? { lat: row.lat, lng: row.lng } : null,
     externalReviewUrl: row.externalReviewUrl,
     sections,

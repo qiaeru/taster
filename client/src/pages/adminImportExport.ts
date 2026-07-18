@@ -22,6 +22,7 @@ const TEMPLATE = {
       favorite: true,
       published: true,
       tags: ["JRPG", "SNES"],
+      description: "Three eras, one broken timeline: a silent swordsman sets out to undo the end of the world.",
       date: "1995-03",
       externalReviewUrl: null,
       sections: [

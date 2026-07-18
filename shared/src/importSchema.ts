@@ -36,6 +36,8 @@ export interface ImportTaste {
   favorite?: boolean;
   published?: boolean;
   tags?: string[];
+  /** Markdown synopsis shown on the detail page (spoilers supported). */
+  description?: string | null;
   date?: PartialDate | null;
   location?: GeoPoint | null;
   externalReviewUrl?: string | null;
@@ -44,6 +46,8 @@ export interface ImportTaste {
   image?: ImportImage | null;
   /** Focal point of the cover image, fractions 0..1; absent = centered. */
   imageFocus?: ImageFocus | null;
+  /** Alt text / credits of the cover image. */
+  imageAlt?: string | null;
   /** Honored when the import creates the taste (restores the original
    *  timeline); ignored on updates. SQLite UTC or ISO 8601. */
   createdAt?: string;
@@ -72,7 +76,9 @@ export type ImportErrorCode =
   | "INVALID_SECTIONS"
   | "INVALID_LINKS"
   | "INVALID_TAGS"
-  | "INVALID_IMAGE_FOCUS";
+  | "INVALID_IMAGE_FOCUS"
+  | "INVALID_DESCRIPTION"
+  | "INVALID_IMAGE_ALT";
 
 export interface ImportItemError {
   /** Index of the failing taste in the `tastes` array. */

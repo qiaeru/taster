@@ -58,6 +58,7 @@ function orderedTaste(id: string, withImage: boolean): ImportTaste | null {
   if (detail.favorite) out.favorite = true;
   if (!detail.published) out.published = false;
   if (detail.tags.length) out.tags = detail.tags;
+  if (detail.description) out.description = detail.description;
   if (detail.refDate) out.date = detail.refDate;
   if (detail.location) out.location = detail.location;
   if (detail.externalReviewUrl) out.externalReviewUrl = detail.externalReviewUrl;
@@ -72,6 +73,7 @@ function orderedTaste(id: string, withImage: boolean): ImportTaste | null {
   }
   if (detail.links.length) out.links = detail.links;
   if (detail.imageFocus) out.imageFocus = detail.imageFocus;
+  if (detail.imageAlt) out.imageAlt = detail.imageAlt;
   if (withImage && detail.imageFile) {
     try {
       // basename() mirrors deleteImageFiles: the column only ever holds
@@ -218,9 +220,11 @@ export async function importTastes(payload: unknown, dryRun = false): Promise<Im
         rating: item.rating ?? null,
         statusId,
         tags: item.tags,
+        description: item.description ?? null,
         refDate: item.date ?? null,
         location: item.location ?? null,
         imageFocus: item.imageFocus ?? null,
+        imageAlt: item.imageAlt ?? null,
         externalReviewUrl: item.externalReviewUrl ?? null,
         published: item.published,
         favorite: item.favorite,

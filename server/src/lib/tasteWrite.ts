@@ -18,6 +18,8 @@ export class TasteValidationError extends Error {
 }
 
 const MAX_TITLE = 300;
+const MAX_DESCRIPTION = 5000;
+const MAX_IMAGE_ALT = 300;
 const MAX_TAG = 80;
 const MAX_TAGS = 50;
 const MAX_SECTIONS = 30;
@@ -41,11 +43,13 @@ export interface CleanTaste {
   rating: number | null;
   statusId: number | null;
   tags: string[];
+  description: string | null;
   refDate: string | null;
   lat: number | null;
   lng: number | null;
   focusX: number | null;
   focusY: number | null;
+  imageAlt: string | null;
   externalReviewUrl: string | null;
   published: boolean;
   favorite: boolean;
@@ -104,6 +108,14 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
     }
   }
 
+  let description: string | null = null;
+  if (input.description !== undefined && input.description !== null) {
+    if (typeof input.description !== "string" || input.description.length > MAX_DESCRIPTION) {
+      throw new TasteValidationError("INVALID_DESCRIPTION");
+    }
+    description = input.description.trim() || null;
+  }
+
   let refDate: string | null = null;
   if (input.refDate !== undefined && input.refDate !== null && input.refDate !== "") {
     if (!isValidPartialDate(input.refDate)) throw new TasteValidationError("INVALID_DATE");
@@ -150,6 +162,14 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
     }
     focusX = focus.x;
     focusY = focus.y;
+  }
+
+  let imageAlt: string | null = null;
+  if (input.imageAlt !== undefined && input.imageAlt !== null) {
+    if (typeof input.imageAlt !== "string" || input.imageAlt.length > MAX_IMAGE_ALT) {
+      throw new TasteValidationError("INVALID_IMAGE_ALT");
+    }
+    imageAlt = input.imageAlt.trim() || null;
   }
 
   let externalReviewUrl: string | null = null;
@@ -218,11 +238,13 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
     rating,
     statusId,
     tags,
+    description,
     refDate,
     lat,
     lng,
     focusX,
     focusY,
+    imageAlt,
     externalReviewUrl,
     published: input.published !== false,
     favorite: input.favorite === true,
@@ -273,20 +295,23 @@ export const createTaste = transaction(
     const db = getDb();
     const tasteId = id ?? randomUUID();
     db.prepare(
-      `INSERT INTO tastes (id, title, category_id, rating, status_id, ref_date, lat, lng,
-                           focus_x, focus_y, external_review_url, published, favorite, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
+      `INSERT INTO tastes (id, title, category_id, rating, status_id, description, ref_date,
+                           lat, lng, focus_x, focus_y, image_alt, external_review_url, published,
+                           favorite, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
     ).run(
       tasteId,
       clean.title,
       clean.categoryId,
       clean.rating,
       clean.statusId,
+      clean.description,
       clean.refDate,
       clean.lat,
       clean.lng,
       clean.focusX,
       clean.focusY,
+      clean.imageAlt,
       clean.externalReviewUrl,
       clean.published ? 1 : 0,
       clean.favorite ? 1 : 0,
@@ -303,9 +328,9 @@ export const updateTaste = transaction((tasteId: string, clean: CleanTaste): boo
   const db = getDb();
   const info = db
     .prepare(
-      `UPDATE tastes SET title = ?, category_id = ?, rating = ?, status_id = ?, ref_date = ?,
-         lat = ?, lng = ?, focus_x = ?, focus_y = ?, external_review_url = ?, published = ?,
-         favorite = ?, updated_at = datetime('now')
+      `UPDATE tastes SET title = ?, category_id = ?, rating = ?, status_id = ?, description = ?,
+         ref_date = ?, lat = ?, lng = ?, focus_x = ?, focus_y = ?, image_alt = ?,
+         external_review_url = ?, published = ?, favorite = ?, updated_at = datetime('now')
        WHERE id = ?`
     )
     .run(
@@ -313,11 +338,13 @@ export const updateTaste = transaction((tasteId: string, clean: CleanTaste): boo
       clean.categoryId,
       clean.rating,
       clean.statusId,
+      clean.description,
       clean.refDate,
       clean.lat,
       clean.lng,
       clean.focusX,
       clean.focusY,
+      clean.imageAlt,
       clean.externalReviewUrl,
       clean.published ? 1 : 0,
       clean.favorite ? 1 : 0,
@@ -353,10 +380,18 @@ export function setTasteImage(tasteId: string, imageFile: string | null): boolea
     | { imageFile: string | null }
     | undefined;
   if (!row) return false;
-  db.prepare("UPDATE tastes SET image_file = ?, updated_at = datetime('now') WHERE id = ?").run(
-    imageFile,
-    tasteId
-  );
+  if (imageFile === null) {
+    // The alt text describes the removed picture: a later upload must not
+    // inherit it.
+    db.prepare(
+      "UPDATE tastes SET image_file = NULL, image_alt = NULL, updated_at = datetime('now') WHERE id = ?"
+    ).run(tasteId);
+  } else {
+    db.prepare("UPDATE tastes SET image_file = ?, updated_at = datetime('now') WHERE id = ?").run(
+      imageFile,
+      tasteId
+    );
+  }
   bumpDataRevision();
   if (row.imageFile && row.imageFile !== imageFile) deleteImageFiles(row.imageFile);
   return true;

@@ -26,6 +26,7 @@ Files are UTF-8. Exports start with a byte order mark (BOM) so Windows editors d
 | `favorite` | boolean | no | Defaults to `false`. |
 | `published` | boolean | no | Defaults to `true`; `false` keeps the entry as a draft. |
 | `tags` | string[] | no | Free-form labels (genres, cuisine, platform...). Max 50, deduplicated case-insensitively; commas are not allowed in a tag name (the list filter URL separates tags with them). |
+| `description` | string | no | Short introduction (a movie's synopsis, a game's pitch), max 5000 characters, shown on the taste page between the tags and the review. Markdown and the spoiler syntax are supported, like in sections. |
 | `date` | string | no | Flexible precision: `"1995"`, `"1995-03"` or `"1995-03-11"`. |
 | `location` | object | no | `{ "lat": 45.76, "lng": 4.83 }`, both required together. Shown as map links on the taste page. |
 | `externalReviewUrl` | string (URL) | no | "Read the full review" link, e.g. a blog post. http(s) only. |
@@ -33,6 +34,7 @@ Files are UTF-8. Exports start with a byte order mark (BOM) so Windows editors d
 | `links` | object[] | no | Reference links, see below. |
 | `image` | object | no | Embedded illustration, see below. |
 | `imageFocus` | object | no | `{ "x": 0.5, "y": 0.2 }`, fractions of the image width and height between 0 and 1. Focal point that card thumbnails keep centered; absent means centered. |
+| `imageAlt` | string | no | Description of the cover image, max 300 characters: alt text for screen readers, shown as a tooltip when hovering the image, also a place for credits. |
 | `createdAt` | string | no | Written by exports. Honored when the import creates the taste (restores the original creation date); ignored on updates. |
 | `updatedAt` | string | no | Export metadata; ignored on import. |
 
@@ -69,7 +71,7 @@ Both keys required, http(s) URLs only.
 
 `POST /api/admin/import` answers `{ "imported": n, "updated": n, "errors": [{ "index": i, "code": "..." }] }`. `index` is the 0-based position in `tastes`.
 
-`TITLE_REQUIRED`, `CATEGORY_REQUIRED`, `CATEGORY_UNKNOWN`, `STATUS_UNKNOWN`, `INVALID_RATING`, `INVALID_DATE`, `INVALID_LOCATION`, `INVALID_URL`, `INVALID_IMAGE`, `IMAGE_TOO_LARGE`, `INVALID_SECTIONS`, `INVALID_LINKS`, `INVALID_TAGS`. A file that is not a Taster export at all answers `400 INVALID_FILE`.
+`TITLE_REQUIRED`, `CATEGORY_REQUIRED`, `CATEGORY_UNKNOWN`, `STATUS_UNKNOWN`, `INVALID_RATING`, `INVALID_DATE`, `INVALID_LOCATION`, `INVALID_URL`, `INVALID_IMAGE`, `IMAGE_TOO_LARGE`, `INVALID_SECTIONS`, `INVALID_LINKS`, `INVALID_TAGS`, `INVALID_DESCRIPTION`, `INVALID_IMAGE_ALT`. A file that is not a Taster export at all answers `400 INVALID_FILE`.
 
 ## Minimal example
 
@@ -98,6 +100,7 @@ Both keys required, http(s) URLs only.
       "favorite": true,
       "published": true,
       "tags": ["JRPG", "SNES"],
+      "description": "Three eras, one broken timeline: a silent swordsman sets out to undo the end of the world.",
       "date": "1995-03",
       "location": { "lat": 48.8584, "lng": 2.2945 },
       "externalReviewUrl": null,
@@ -130,7 +133,7 @@ The repository ships ready-to-import sample files with fictional entries across 
 
 - Full export: admin, Import and export tab, or `GET /api/admin/export` (`?images=1` to embed images).
 - Single taste: `GET /api/admin/tastes/:id/export`.
-- Output is pretty-printed with a stable key order (title, category, rating, status, favorite, published, tags, date, location, externalReviewUrl, sections, links, image) so the file stays pleasant to edit by hand; absent optional fields are omitted rather than set to null.
+- Output is pretty-printed with a stable key order (title, category, rating, status, favorite, published, tags, description, date, location, externalReviewUrl, sections, links, imageFocus, imageAlt, image) so the file stays pleasant to edit by hand; absent optional fields are omitted rather than set to null.
 - Re-importing an export is idempotent: entries update in place thanks to their `id`.
 
 ## Categories file

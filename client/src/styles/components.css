@@ -612,9 +612,15 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    /* Same breathing room before the results as .toolbar leaves before the
-       category chips. */
+    /* Same perceived breathing room before the results as between the search
+       field and the category chips: .toolbar's 0.9rem margin, plus its sticky
+       0.6rem padding on wide screens. */
     margin-bottom: 0.9rem;
+  }
+  @media (min-width: 720px) {
+    .filter-bar {
+      margin-bottom: 1.5rem;
+    }
   }
   .tag-filter {
     display: flex;

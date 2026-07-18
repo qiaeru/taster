@@ -27,8 +27,6 @@ export function closeDb(): void {
   }
 }
 
-// Reads a value from the generic `settings` key/value table. Returns null when
-// the key is absent.
 function getSetting(key: string): string | null {
   const row = getDb().prepare("SELECT value FROM settings WHERE key = ?").get(key) as
     | { value: string | null }
@@ -60,8 +58,7 @@ export function isUniqueViolation(err: unknown): boolean {
   return e.code === "SQLITE_CONSTRAINT_UNIQUE" || e.errcode === 2067;
 }
 
-// Wraps `fn` inside an explicit BEGIN/COMMIT transaction. Mirrors the
-// ergonomics of better-sqlite3's `db.transaction(fn)` helper.
+// Mirrors better-sqlite3's db.transaction(fn) ergonomics.
 export function transaction<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
   return (...args: A): R => {
     const db = getDb();

@@ -56,8 +56,6 @@
   "list.empty.title": "Rien à afficher pour l’instant",
   "list.empty.text": "Aucun goût ne correspond à ces filtres.",
   "list.empty.noData": "La liste est vide. Connectez-vous à l’administration pour ajouter votre premier goût.",
-  "list.count.one": "{{count}} goût",
-  "list.count.other": "{{count}} goûts",
   "list.backToTop": "Retour en haut",
   "list.loading": "Chargement…",
 
@@ -243,6 +241,10 @@
 
   "tags.hint": "Les étiquettes sont partagées par tous les goûts : renommer ou supprimer agit sur tout le catalogue. Renommer vers un nom déjà pris propose de fusionner les deux étiquettes.",
   "tags.empty": "Aucune étiquette pour l’instant.",
+  "tags.search": "Filtrer les étiquettes…",
+  "tags.noMatch": "Aucune étiquette ne correspond.",
+  "tags.open": "Voir dans la liste publique",
+  "tags.openAria": "{{count}} goût(s) : voir « {{name}} » dans la liste publique",
   "tags.count": "{{count}} goût(s)",
   "tags.saved": "Étiquette renommée.",
   "tags.merged": "Étiquettes fusionnées.",

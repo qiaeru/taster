@@ -11,18 +11,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Tastes can carry an optional description (a movie's synopsis, a game's pitch) shown on the detail page next to the cover image, with Markdown and spoilers supported. It is searched by the instant search, travels through JSON export and import, and feeds link previews.
 - The cover image can carry an optional description: read by screen readers, shown as a tooltip when hovering the image, a natural place for credits. It travels through JSON export and import and is cleared with its image.
 - Signed-in admins get quick actions on the public list: a pencil shortcut to the edit form and a heart that toggles the favorite on the spot.
-- The admin gets a Tags tab to rename, merge or delete a tag across the whole catalog.
+- The admin gets a Tags tab to rename, merge or delete a tag across the whole catalog: a filterable grid of cards whose usage counts open the public list filtered on that tag.
 - Categories can be reordered by dragging their cards in the admin; reference links, review sections and statuses gain drag handles alongside the arrows.
 - Detail pages end with a "You may also like" strip of same-category tastes and can be browsed with the left and right arrow keys.
 - The admin taste list gains a "Drafts" toggle with a live count of unpublished entries.
 - The search field gets a clear button, the chosen sort is remembered across visits like the view, and the statistics month bars link to the list filtered on that month.
+- The admin sign-in becomes a card floating over a cloud of the catalog's own category icons, drifting at different depths and shying away from the cursor; the first-run password screen shares the backdrop.
 
 ### Changed
 
 - The date shown in the grid and list views when sorting by date added reads "Added on ..." like the detail page, which also gains a final period.
 - The status, rating and favorites filters sit above the tag cloud, right under the category chips.
 - The statistics only list months and ratings that have at least one taste.
+- The list no longer shows a result count between the filters and the results: the category chips already carry the numbers.
 - Typing a comma in the tag field no longer commits the tag: Enter (or leaving the field) splits "a, b, c" into one tag each.
+- Atom feed entries carry a short summary (the synopsis, or the first lines of the review), so feed readers show more than bare titles.
 
 ### Fixed
 
@@ -30,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The favorite heart is geometrically centered in its badge on grid cards.
 - On phones, pages no longer wiggle sideways (hidden tooltip bubbles were widening the page) and the list toolbar fits on two rows.
 - The "server not responding" message and its Retry button are no longer glued together.
+- The home page filter blocks (category chips, filter row, tag cloud) are now evenly spaced, with the same breathing room before the results as after the search bar.
 
 ## [0.3.0] - 2026-07-17
 

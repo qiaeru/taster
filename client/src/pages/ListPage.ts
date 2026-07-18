@@ -273,7 +273,6 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
   // ---- static skeleton (built once; results re-render on state change) ----
   let filterBar: HTMLElement;
   let results: HTMLElement;
-  let countEl: HTMLElement;
   let chipsNav: HTMLElement;
 
   function build(): void {
@@ -411,10 +410,6 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     filterBar = document.createElement("div");
     filterBar.className = "filter-bar";
     main.appendChild(filterBar);
-
-    countEl = document.createElement("p");
-    countEl.className = "muted result-count";
-    main.appendChild(countEl);
 
     results = document.createElement("div");
     results.className = "results";
@@ -719,9 +714,6 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
     };
 
     const filtered = applyFilters(catalog, state);
-    countEl.textContent = t(filtered.length === 1 ? "list.count.one" : "list.count.other", {
-      count: filtered.length,
-    });
 
     if (!filtered.length) {
       const empty = document.createElement("div");

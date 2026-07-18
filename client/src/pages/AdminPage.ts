@@ -3,6 +3,7 @@
 // tastes, categories, import/export and account.
 
 import type { AdminTasteSummary, Category } from "@taster/shared";
+import logoRaw from "../../public/logo.svg?raw";
 import {
   adminApi,
   authApi,
@@ -12,6 +13,7 @@ import {
   loadCatalog,
   thumbUrl,
 } from "../api.js";
+import { floatingBackground } from "../components/FloatingBackground.js";
 import { renderHeader } from "../components/Header.js";
 import { icon, CATEGORY_ICONS, isOutlineIcon } from "../components/Icon.js";
 import { tip } from "../components/Tooltip.js";
@@ -60,7 +62,12 @@ function passwordErrorMessage(err: unknown): string {
 
 function renderLogin(main: HTMLElement): void {
   const box = document.createElement("form");
-  box.className = "auth-box";
+  box.className = "auth-box auth-card";
+  const logo = document.createElement("span");
+  logo.className = "auth-logo";
+  logo.innerHTML = logoRaw;
+  logo.querySelector("svg")?.setAttribute("aria-hidden", "true");
+  box.appendChild(logo);
   const h1 = document.createElement("h1");
   h1.className = "page-title";
   h1.textContent = t("login.title");
@@ -117,7 +124,7 @@ function renderLogin(main: HTMLElement): void {
 
 function renderPasswordChange(main: HTMLElement, forced: boolean, onDone: () => void): void {
   const box = document.createElement("form");
-  box.className = "auth-box";
+  box.className = forced ? "auth-box auth-card" : "auth-box";
   if (forced) {
     const h1 = document.createElement("h1");
     h1.className = "page-title";
@@ -831,12 +838,18 @@ async function renderCategoriesTab(body: HTMLElement): Promise<void> {
 // ---- tags tab ----
 
 async function renderTagsTab(body: HTMLElement): Promise<void> {
+  // A reload after a rename or delete keeps the admin's filter text (and its
+  // focus) so cleaning a whole family of tags never means retyping it.
+  const prevFilter = body.querySelector<HTMLInputElement>(".tag-filter-input");
+  const keptFilter = prevFilter?.value ?? "";
+  const keptFocus = document.activeElement === prevFilter;
+
   const tags = await adminApi.tags();
   if (body.dataset.tab !== "tags") return; // another tab took over meanwhile
   body.innerHTML = "";
 
   const hint = document.createElement("p");
-  hint.className = "muted field-hint";
+  hint.className = "muted field-hint tags-intro";
   hint.textContent = t("tags.hint");
   body.appendChild(hint);
 
@@ -848,18 +861,36 @@ async function renderTagsTab(body: HTMLElement): Promise<void> {
     return;
   }
 
-  const list = document.createElement("div");
-  list.className = "status-list tag-admin-list";
-  body.appendChild(list);
+  const toolbar = document.createElement("div");
+  toolbar.className = "admin-toolbar";
+  const filter = document.createElement("input");
+  filter.type = "search";
+  filter.className = "input tag-filter-input";
+  filter.placeholder = t("tags.search");
+  filter.setAttribute("aria-label", t("tags.search"));
+  filter.value = keptFilter;
+  toolbar.appendChild(filter);
+  body.appendChild(toolbar);
+
+  const grid = document.createElement("div");
+  grid.className = "tag-grid";
+  body.appendChild(grid);
+
+  const noMatch = document.createElement("p");
+  noMatch.className = "muted";
+  noMatch.textContent = t("tags.noMatch");
+  noMatch.hidden = true;
+  body.appendChild(noMatch);
 
   const reload = (): void => {
     invalidateCatalog();
     void renderTagsTab(body);
   };
 
-  for (const tag of tags) {
+  const card = (tag: (typeof tags)[number]): HTMLElement => {
     const rowEl = document.createElement("div");
-    rowEl.className = "status-row";
+    rowEl.className = "tag-card";
+    rowEl.appendChild(icon("tag", "icon icon-sm tag-card-icon"));
 
     const input = document.createElement("input");
     input.type = "text";
@@ -869,9 +900,15 @@ async function renderTagsTab(body: HTMLElement): Promise<void> {
     input.setAttribute("aria-label", tag.name);
     rowEl.appendChild(input);
 
-    const count = document.createElement("span");
-    count.className = "muted tag-usage";
+    // The usage count links to the public list filtered on this tag. The
+    // accessible name keeps the visible count and adds the tag name, so the
+    // links don't all announce alike to a screen reader.
+    const count = document.createElement("a");
+    count.className = "chip tag-count";
+    count.href = `/?tags=${encodeURIComponent(tag.name)}`;
     count.textContent = t("tags.count", { count: tag.count });
+    tip(count, t("tags.open"));
+    count.setAttribute("aria-label", t("tags.openAria", { count: tag.count, name: tag.name }));
     rowEl.appendChild(count);
 
     const rename = async (merge: boolean): Promise<void> => {
@@ -927,9 +964,28 @@ async function renderTagsTab(body: HTMLElement): Promise<void> {
       }
     });
     rowEl.appendChild(del);
+    return rowEl;
+  };
 
-    list.appendChild(rowEl);
-  }
+  // Cards are built once and only hidden by the filter: rebuilding them from
+  // the fetched data on each keystroke would silently discard an in-progress
+  // rename (and reparse every icon for nothing).
+  const cards = tags.map((tag) => ({ el: card(tag), folded: searchFold(tag.name) }));
+  for (const entry of cards) grid.appendChild(entry.el);
+
+  const paint = (): void => {
+    const fold = searchFold(filter.value.trim());
+    let shown = 0;
+    for (const entry of cards) {
+      const match = !fold || entry.folded.includes(fold);
+      entry.el.hidden = !match;
+      if (match) shown++;
+    }
+    noMatch.hidden = shown > 0;
+  };
+  filter.addEventListener("input", paint);
+  paint();
+  if (keptFocus) filter.focus();
 }
 
 // ---- account tab ----
@@ -1024,19 +1080,36 @@ function renderDashboard(main: HTMLElement): void {
   tabs[0].render(body);
 }
 
-export function renderAdmin(root: HTMLElement): void {
+export function renderAdmin(root: HTMLElement): () => void {
   root.appendChild(renderHeader());
   const main = document.createElement("main");
   main.className = "admin-page";
   root.appendChild(main);
   document.title = `${t("admin.title")} · Taster`;
 
+  // Floating icon backdrop behind the login and first-run password screens;
+  // its cursor listener lives on window, so the router teardown releases it.
+  let disposeBackdrop: (() => void) | undefined;
+  const backdrop = (): void => {
+    // The session fetch may resolve after the visitor already left /admin;
+    // mounting then would leak the background's window mousemove listener
+    // (the router has already consumed the teardown as a no-op).
+    if (!main.isConnected) return;
+    const bg = floatingBackground();
+    disposeBackdrop = bg.dispose;
+    main.appendChild(bg.el);
+  };
+
   void authApi
     .session()
     .then((session) => {
-      if (!session.authenticated) renderLogin(main);
-      else if (session.mustChangePassword) renderPasswordChange(main, true, () => rerender());
-      else renderDashboard(main);
+      if (!session.authenticated) {
+        backdrop();
+        renderLogin(main);
+      } else if (session.mustChangePassword) {
+        backdrop();
+        renderPasswordChange(main, true, () => rerender());
+      } else renderDashboard(main);
     })
     .catch(() => {
       const err = document.createElement("p");
@@ -1044,4 +1117,6 @@ export function renderAdmin(root: HTMLElement): void {
       err.textContent = t("error.network");
       main.appendChild(err);
     });
+
+  return () => disposeBackdrop?.();
 }

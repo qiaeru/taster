@@ -56,8 +56,6 @@
   "list.empty.title": "Nothing to show yet",
   "list.empty.text": "No tastes match these filters.",
   "list.empty.noData": "The list is empty. Sign in to the admin to add your first taste.",
-  "list.count.one": "{{count}} taste",
-  "list.count.other": "{{count}} tastes",
   "list.backToTop": "Back to top",
   "list.loading": "Loading…",
 
@@ -243,6 +241,10 @@
 
   "tags.hint": "Tags are shared across all tastes: renaming or deleting one acts on the whole catalog. Renaming to a name already in use offers to merge the two tags.",
   "tags.empty": "No tags yet.",
+  "tags.search": "Filter tags…",
+  "tags.noMatch": "No tag matches.",
+  "tags.open": "View in the public list",
+  "tags.openAria": "{{count}} taste(s): view \"{{name}}\" in the public list",
   "tags.count": "{{count}} taste(s)",
   "tags.saved": "Tag renamed.",
   "tags.merged": "Tags merged.",

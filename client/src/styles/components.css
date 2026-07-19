@@ -1309,6 +1309,15 @@
     justify-content: flex-end;
     margin-top: 1rem;
   }
+  /* Typed-keyword confirmation (wipe-all): preflight zeroed the margins. */
+  .confirm-dialog .muted {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+  }
+  .confirm-dialog .input {
+    margin-top: 0.75rem;
+    width: 100%;
+  }
 
   /* ---- forms ---- */
   .auth-box {
@@ -1317,6 +1326,11 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+  /* Inside an admin tab panel (Account) the box aligns with the full-width
+     tabs; only the standalone login/password screens stay centered. */
+  .tab-body .auth-box {
+    margin: 0;
   }
   /* Login and first-run password screens: a card floating over the icon
      backdrop below. z-index lifts it above the fixed .floating-bg layer. */
@@ -1728,6 +1742,17 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
+  }
+  /* Application tab: full-width sections like import/export, controls capped
+     at a comfortable width. */
+  .app-control {
+    width: min(22rem, 100%);
+  }
+  .app-save {
+    margin-bottom: 2rem;
+  }
+  .danger-zone .btn + .field-hint {
+    margin-top: 0.75rem;
   }
 
   .category-list {

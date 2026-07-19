@@ -7,6 +7,7 @@ import { icon } from "./Icon.js";
 import { tip } from "./Tooltip.js";
 import { renderLocaleSwitcher } from "./LocaleSwitcher.js";
 import { t } from "../i18n/index.js";
+import { appName } from "../lib/appSettings.js";
 import { scheme$, toggleScheme } from "../lib/theme.js";
 
 function themeToggle(): HTMLButtonElement {
@@ -54,7 +55,7 @@ export function renderHeader(): HTMLElement {
   brand.appendChild(logo);
   const name = document.createElement("span");
   name.className = "brand-name";
-  name.textContent = t("app.name");
+  name.textContent = appName();
   brand.appendChild(name);
   header.appendChild(brand);
 

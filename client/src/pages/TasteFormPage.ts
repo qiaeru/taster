@@ -18,6 +18,7 @@ import { sectionEditor } from "../components/SectionEditor.js";
 import { toast } from "../components/Toaster.js";
 import { confirmDialog } from "../components/ConfirmDialog.js";
 import { t } from "../i18n/index.js";
+import { appName } from "../lib/appSettings.js";
 import { dragReorder, moveItem } from "../lib/dragReorder.js";
 import { resizeForUpload } from "../lib/imageResize.js";
 import { navigate, setNavGuard } from "../router.js";
@@ -145,7 +146,7 @@ export function renderTasteForm(
     h1.className = "page-title";
     h1.textContent = editId ? t("form.editTitle") : t("form.newTitle");
     main.appendChild(h1);
-    document.title = `${h1.textContent} · Taster`;
+    document.title = `${h1.textContent} · ${appName()}`;
 
     const draftKey = DRAFT_PREFIX + (editId ?? "new");
     const draft = ((): FormDraft | null => {

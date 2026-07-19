@@ -7,6 +7,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { getDb } from "../db/index.js";
 import { config } from "../config.js";
 import { excerptFor, plainExcerpt } from "../lib/html.js";
+import { readAppSettings } from "../lib/settings.js";
 
 const FEED_LIMIT = 50;
 
@@ -76,15 +77,16 @@ export default async function seoRoutes(app: FastifyInstance) {
       })
       .join("\n");
 
+    const appName = escapeXml(readAppSettings().appName);
     const xml = `<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <id>${escapeXml(base)}/</id>
-  <title>Taster</title>
+  <title>${appName}</title>
   <subtitle>Latest tastes</subtitle>
   <link href="${escapeXml(base)}/"/>
   <link rel="self" href="${escapeXml(base)}/feed.xml"/>
   <updated>${feedUpdated}</updated>
-  <author><name>Taster</name></author>
+  <author><name>${appName}</name></author>
 ${entries}
 </feed>
 `;

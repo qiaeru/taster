@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { config } from "../config.js";
 import { getDb } from "./../db/index.js";
+import { readAppSettings } from "./settings.js";
 
 let template: string | null = null;
 
@@ -31,6 +32,7 @@ function absoluteUrl(path: string): string {
 }
 
 interface OgData {
+  siteName: string;
   title: string;
   description: string;
   imagePath: string | null;
@@ -43,7 +45,7 @@ function metaTags(og: OgData): string {
   const lines = [
     `<meta name="description" content="${description}" />`,
     `<meta property="og:type" content="website" />`,
-    `<meta property="og:site_name" content="Taster" />`,
+    `<meta property="og:site_name" content="${escapeHtml(og.siteName)}" />`,
     `<meta property="og:title" content="${title}" />`,
     `<meta property="og:description" content="${description}" />`,
     `<meta property="og:url" content="${escapeHtml(absoluteUrl(og.urlPath))}" />`,
@@ -84,6 +86,7 @@ const TASTE_PATH = /^\/taste\/([0-9a-f-]{36})(?:\?.*)?$/i;
 
 export function renderIndexHtml(url: string): string {
   const tpl = getTemplate();
+  const appName = readAppSettings().appName;
   const defaultDescription =
     "A self-hosted showcase of personal tastes: movies, TV shows, video games, restaurants, books, music and more.";
 
@@ -100,7 +103,8 @@ export function renderIndexHtml(url: string): string {
     if (row) {
       const synopsis = row.description ? plainExcerpt(row.description) : null;
       const og = metaTags({
-        title: `${row.title} · Taster`,
+        siteName: appName,
+        title: `${row.title} · ${appName}`,
         description: synopsis || excerptFor(row.id) || defaultDescription,
         imagePath: row.imageFile ? `/uploads/${row.imageFile}` : null,
         urlPath: `/taste/${row.id}`,
@@ -109,15 +113,21 @@ export function renderIndexHtml(url: string): string {
       // patterns coming from the taste title into template fragments.
       return tpl
         .replace("<!--og:head-->", () => og)
-        .replace("<title>Taster</title>", () => `<title>${escapeHtml(row.title)} · Taster</title>`);
+        .replace(
+          "<title>Taster</title>",
+          () => `<title>${escapeHtml(`${row.title} · ${appName}`)}</title>`
+        );
     }
   }
 
   const og = metaTags({
-    title: "Taster",
+    siteName: appName,
+    title: appName,
     description: defaultDescription,
     imagePath: null,
     urlPath: "/",
   });
-  return tpl.replace("<!--og:head-->", () => og);
+  return tpl
+    .replace("<!--og:head-->", () => og)
+    .replace("<title>Taster</title>", () => `<title>${escapeHtml(appName)}</title>`);
 }

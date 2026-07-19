@@ -53,8 +53,13 @@ export default fp(async function staticPlugin(app) {
   // same per-IP budget as regular routes (a not-found handler sits outside
   // the global limiter otherwise).
   app.setNotFoundHandler({ preHandler: app.rateLimit() }, async (request, reply) => {
-    // API misses and missing uploaded images are real 404s, never index.html.
-    if (request.url.startsWith("/api/") || request.url.startsWith("/uploads/")) {
+    // API misses, missing uploads and missing theme files are real 404s,
+    // never index.html.
+    if (
+      request.url.startsWith("/api/") ||
+      request.url.startsWith("/uploads/") ||
+      request.url.startsWith("/themes/")
+    ) {
       return reply.code(404).send({ error: "NOT_FOUND" });
     }
     if (request.method !== "GET" && request.method !== "HEAD") {

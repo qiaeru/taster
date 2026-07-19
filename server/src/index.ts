@@ -19,12 +19,15 @@ import authRoutes from "./routes/auth.js";
 import tasteRoutes from "./routes/tastes.js";
 import categoryRoutes from "./routes/categories.js";
 import uploadsPlugin from "./routes/uploads.js";
+import themesPlugin from "./routes/themes.js";
+import settingsRoutes from "./routes/settings.js";
 import seoRoutes from "./routes/seo.js";
 import manifestRoutes from "./routes/manifest.js";
 import adminTasteRoutes from "./routes/admin-tastes.js";
 import adminCategoryRoutes from "./routes/admin-categories.js";
 import adminTagRoutes from "./routes/admin-tags.js";
 import adminImportRoutes from "./routes/admin-import.js";
+import adminSettingsRoutes from "./routes/admin-settings.js";
 import { requireAdmin } from "./lib/auth.js";
 
 async function buildApp() {
@@ -77,12 +80,14 @@ async function buildApp() {
   await app.register(seoRoutes);
   await app.register(manifestRoutes);
   await app.register(uploadsPlugin);
+  await app.register(themesPlugin);
 
   await app.register(
     async (scope) => {
       await scope.register(authRoutes);
       await scope.register(tasteRoutes);
       await scope.register(categoryRoutes);
+      await scope.register(settingsRoutes);
     },
     { prefix: "/api" }
   );
@@ -96,6 +101,7 @@ async function buildApp() {
       await scope.register(adminCategoryRoutes);
       await scope.register(adminTagRoutes);
       await scope.register(adminImportRoutes);
+      await scope.register(adminSettingsRoutes);
     },
     { prefix: "/api/admin" }
   );

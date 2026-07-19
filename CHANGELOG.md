@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- An Application tab in the admin: rename the instance (the header, browser tab, PWA manifest, Atom feed and link previews all follow), pick a theme among CSS files dropped in the data volume's `themes` folder, and choose the default language served to first-time visitors.
+- The same tab can wipe all tastes or all categories, each behind a dialog that requires typing a confirmation word.
+
+### Changed
+
+- On the detail page, the added date now reads "Taste added on ..." and sits under the title with the rating and category, instead of hanging below the "You may also like" strip.
+- The admin taste list is sorted alphabetically and no longer shows the last-edited date, leaving titles the room they need before being cut short.
+- Automatic language detection is no longer frozen at the first visit: only an explicit pick in the header persists across visits.
+- The admin Account tab lines up with the other tabs instead of centering its form.
+
+### Fixed
+
+- On phones, the category chips row no longer touches the filter row below it.
+
 ## [0.4.0] - 2026-07-18
 
 ### Added

@@ -72,6 +72,15 @@ export default async function adminTasteRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  // Full wipe from the Application tab. Goes through deleteTaste per id so
+  // image files and orphan tags are cleaned up exactly like a single delete.
+  app.delete("/tastes", async () => {
+    const ids = getDb().prepare("SELECT id FROM tastes").all() as { id: string }[];
+    let affected = 0;
+    for (const { id } of ids) if (deleteTaste(id)) affected++;
+    return { affected };
+  });
+
   // Quick favorite toggle from the list views. A full PUT would need the whole
   // taste: the summary payload the list holds has no sections or links, and
   // updateTaste would wipe them.

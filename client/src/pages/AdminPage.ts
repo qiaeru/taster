@@ -2,7 +2,7 @@
 // Admin dashboard: login (with the forced password change), then tabs for
 // tastes, categories, import/export and account.
 
-import type { AdminTasteSummary, Category } from "@taster/shared";
+import type { AdminTasteSummary, AppSettings, Category } from "@taster/shared";
 import logoRaw from "../../public/logo.svg?raw";
 import {
   adminApi,
@@ -11,6 +11,7 @@ import {
   ApiError,
   invalidateCatalog,
   loadCatalog,
+  publicApi,
   thumbUrl,
 } from "../api.js";
 import { floatingBackground } from "../components/FloatingBackground.js";
@@ -20,8 +21,9 @@ import { tip } from "../components/Tooltip.js";
 import { bindPasswordStrength } from "../components/PasswordStrength.js";
 import { starDisplay } from "../components/StarRating.js";
 import { toast } from "../components/Toaster.js";
-import { confirmDialog } from "../components/ConfirmDialog.js";
-import { t } from "../i18n/index.js";
+import { confirmDialog, confirmWipeDialog } from "../components/ConfirmDialog.js";
+import { t, SUPPORTED_LOCALES } from "../i18n/index.js";
+import { applyAppSettings, appName } from "../lib/appSettings.js";
 import { dragReorder, moveItem } from "../lib/dragReorder.js";
 import { searchFold } from "../lib/format.js";
 import { navigate, rerender } from "../router.js";
@@ -987,6 +989,145 @@ async function renderTagsTab(body: HTMLElement): Promise<void> {
   if (keptFocus) filter.focus();
 }
 
+// ---- application tab ----
+
+async function renderAppTab(body: HTMLElement): Promise<void> {
+  const [settings, { themes }] = await Promise.all([publicApi.settings(), adminApi.themes()]);
+  if (body.dataset.tab !== "app") return; // another tab took over meanwhile
+  body.innerHTML = "";
+
+  // Same layout as the import/export tab: full-width sections, each opened by
+  // a subhead and a hint. The h3 is not a <label>, so controls carry an
+  // aria-label instead.
+  const section = (title: string, hint: string, control: HTMLElement): HTMLElement => {
+    const wrap = document.createElement("section");
+    wrap.className = "io-section";
+    const h = document.createElement("h3");
+    h.className = "detail-subhead";
+    h.textContent = title;
+    const p = document.createElement("p");
+    p.className = "muted field-hint";
+    p.textContent = hint;
+    control.setAttribute("aria-label", title);
+    wrap.append(h, p, control);
+    return wrap;
+  };
+
+  const form = document.createElement("form");
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "input app-control";
+  nameInput.maxLength = 60;
+  nameInput.placeholder = "Taster";
+  if (settings.appName !== "Taster") nameInput.value = settings.appName;
+  form.appendChild(section(t("admin.app.name"), t("admin.app.name.hint"), nameInput));
+
+  const themeSelect = document.createElement("select");
+  themeSelect.className = "input app-control";
+  for (const theme of themes) {
+    const opt = document.createElement("option");
+    opt.value = theme;
+    opt.textContent = theme === "default" ? t("admin.app.theme.default") : theme;
+    opt.selected = theme === settings.theme;
+    themeSelect.appendChild(opt);
+  }
+  form.appendChild(section(t("admin.app.theme"), t("admin.app.theme.hint"), themeSelect));
+
+  const localeSelect = document.createElement("select");
+  localeSelect.className = "input app-control";
+  const localeOptions: Array<{ value: string; label: string }> = [
+    { value: "auto", label: t("admin.app.locale.auto") },
+    ...SUPPORTED_LOCALES.map((l) => ({ value: l.code, label: l.native })),
+  ];
+  for (const { value, label } of localeOptions) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    opt.selected = value === settings.defaultLocale;
+    localeSelect.appendChild(opt);
+  }
+  form.appendChild(section(t("admin.app.locale"), t("admin.app.locale.hint"), localeSelect));
+
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.className = "btn btn-primary app-save";
+  save.textContent = t("action.save");
+  form.appendChild(save);
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    save.disabled = true;
+    try {
+      const next = await adminApi.updateSettings({
+        appName: nameInput.value.trim() || "Taster",
+        theme: themeSelect.value,
+        defaultLocale: localeSelect.value as AppSettings["defaultLocale"],
+      });
+      applyAppSettings(next);
+      document.title = `${t("admin.title")} · ${next.appName}`;
+      toast(t("admin.app.saved"), "success");
+    } catch {
+      toast(t("error.generic"), "error");
+    } finally {
+      save.disabled = false;
+    }
+  });
+  body.appendChild(form);
+
+  const danger = document.createElement("section");
+  danger.className = "io-section danger-zone";
+  const h = document.createElement("h3");
+  h.className = "detail-subhead";
+  h.textContent = t("admin.app.danger");
+  danger.appendChild(h);
+
+  const wipeRow = (label: string, hint: string, run: () => Promise<void>): void => {
+    const p = document.createElement("p");
+    p.className = "muted field-hint";
+    p.textContent = hint;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn-danger";
+    btn.appendChild(icon("trash", "icon icon-sm"));
+    btn.appendChild(document.createTextNode(label));
+    btn.addEventListener("click", () => void run());
+    danger.append(p, btn);
+  };
+
+  wipeRow(t("admin.app.wipeTastes"), t("admin.app.wipeTastes.confirm"), async () => {
+    if (!(await confirmWipeDialog(t("admin.app.wipeTastes.confirm"), t("admin.app.wipe.keyword"))))
+      return;
+    try {
+      const { affected } = await adminApi.wipeTastes();
+      invalidateCatalog();
+      toast(t("admin.bulk.deleted", { count: affected }), "success");
+    } catch {
+      toast(t("error.generic"), "error");
+    }
+  });
+
+  wipeRow(t("admin.app.wipeCategories"), t("admin.app.wipeCategories.confirm"), async () => {
+    if (
+      !(await confirmWipeDialog(t("admin.app.wipeCategories.confirm"), t("admin.app.wipe.keyword")))
+    )
+      return;
+    try {
+      const { affected } = await adminApi.wipeCategories();
+      invalidateCatalog();
+      toast(t("admin.app.wipedCategories", { count: affected }), "success");
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "CATEGORY_IN_USE") {
+        toast(t("admin.app.wipeCategories.blocked"), "error");
+      } else {
+        toast(t("error.generic"), "error");
+      }
+    }
+  });
+
+  body.appendChild(danger);
+}
+
 // ---- account tab ----
 
 function renderAccountTab(body: HTMLElement): void {
@@ -1019,6 +1160,7 @@ function renderDashboard(main: HTMLElement): void {
       label: t("admin.tab.importExport"),
       render: (b) => void renderImportExportTab(b),
     },
+    { key: "app", label: t("admin.tab.app"), render: (b) => void renderAppTab(b) },
     { key: "account", label: t("admin.tab.account"), render: renderAccountTab },
   ];
 
@@ -1084,7 +1226,7 @@ export function renderAdmin(root: HTMLElement): () => void {
   const main = document.createElement("main");
   main.className = "admin-page";
   root.appendChild(main);
-  document.title = `${t("admin.title")} · Taster`;
+  document.title = `${t("admin.title")} · ${appName()}`;
 
   // Floating icon backdrop behind the login and first-run password screens;
   // its cursor listener lives on window, so the router teardown releases it.

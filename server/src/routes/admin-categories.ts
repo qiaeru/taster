@@ -105,6 +105,18 @@ export default async function adminCategoryRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  // Full wipe from the Application tab. Same guard as the single delete:
+  // tastes reference categories (ON DELETE RESTRICT), so the tastes must go
+  // first; statuses cascade with their category.
+  app.delete("/categories", async (_request, reply) => {
+    const db = getDb();
+    const used = db.prepare("SELECT 1 FROM tastes LIMIT 1").get();
+    if (used) return reply.code(409).send({ error: "CATEGORY_IN_USE" });
+    const info = db.prepare("DELETE FROM categories").run();
+    bumpDataRevision();
+    return { affected: info.changes };
+  });
+
   app.put(
     "/categories/:id/statuses",
     {

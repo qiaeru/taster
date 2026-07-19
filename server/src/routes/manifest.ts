@@ -3,30 +3,23 @@
 // no service worker, no offline mode.
 
 import type { FastifyInstance } from "fastify";
+import { readAppSettings } from "../lib/settings.js";
 
-const MANIFESTS: Record<string, { name: string; description: string }> = {
-  fr: {
-    name: "Taster",
-    description:
-      "Une vitrine de goûts personnels : films, séries, jeux vidéo, restaurants, livres, musique et plus.",
-  },
-  en: {
-    name: "Taster",
-    description:
-      "A showcase of personal tastes: movies, TV shows, video games, restaurants, books, music and more.",
-  },
+const DESCRIPTIONS: Record<string, string> = {
+  fr: "Une vitrine de goûts personnels : films, séries, jeux vidéo, restaurants, livres, musique et plus.",
+  en: "A showcase of personal tastes: movies, TV shows, video games, restaurants, books, music and more.",
 };
 
 export default async function manifestRoutes(app: FastifyInstance) {
   app.get("/manifest.webmanifest", async (request, reply) => {
     const accept = String(request.headers["accept-language"] || "");
     const locale = accept.toLowerCase().startsWith("fr") ? "fr" : "en";
-    const meta = MANIFESTS[locale];
+    const appName = readAppSettings().appName;
     reply.header("Vary", "Accept-Language");
     return reply.type("application/manifest+json; charset=utf-8").send({
-      name: meta.name,
-      short_name: "Taster",
-      description: meta.description,
+      name: appName,
+      short_name: appName,
+      description: DESCRIPTIONS[locale],
       lang: locale,
       start_url: "/",
       display: "standalone",

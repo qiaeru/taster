@@ -31,13 +31,18 @@ const initial: Locale = (() => {
 export const locale$ = new Observable<Locale>(initial);
 
 locale$.subscribe((l) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, l);
-  } catch {
-    /* ignore */
-  }
   document.documentElement.lang = l;
 });
+
+/** True when the visitor explicitly picked a language (via the switcher). */
+export function hasStoredLocale(): boolean {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
+    return saved !== null && LOCALE_CODES.includes(saved);
+  } catch {
+    return false;
+  }
+}
 
 // Fallback chain: active locale → French (source of truth) → raw key.
 export function t(key: string, params?: Record<string, string | number>): string {
@@ -47,6 +52,19 @@ export function t(key: string, params?: Record<string, string | number>): string
   return raw.replace(/\{\{(\w+)\}\}/g, (_m, k: string) => String(params[k] ?? `{{${k}}}`));
 }
 
+// Only an explicit pick persists: a remembered detection or admin default
+// would freeze the visitor's language against later browser or instance
+// setting changes.
 export function setLocale(l: Locale): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, l);
+  } catch {
+    /* ignore */
+  }
+  locale$.set(l);
+}
+
+/** Admin-chosen visitor default; overrides detection but not a stored pick. */
+export function applyDefaultLocale(l: Locale): void {
   locale$.set(l);
 }

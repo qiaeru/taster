@@ -5,7 +5,7 @@ Taster is a single Node.js process: a Fastify 5 server that serves the JSON API,
 ## Repository layout
 
 - `shared/` holds the TypeScript models and the JSON import/export schema, consumed by both other workspaces as `@taster/shared`. Rebuild it (`npm run build -w shared`) after editing.
-- `server/` is the Fastify backend: `src/routes/` (public read API, auth, admin CRUD, import/export, SEO), `src/plugins/` (session, CSRF, rate limit, security headers, static), `src/lib/` (auth guards, password policy, image pipeline, taste read/write, category and status helpers, import/export, OG template rendering), `src/db/` (connection, migration runner, first-boot seed) and `migrations/*.sql`.
+- `server/` is the Fastify backend: `src/routes/` (public read API, auth, admin CRUD, import/export, instance settings, SEO), `src/plugins/` (session, CSRF, rate limit, security headers, static), `src/lib/` (auth guards, password policy, image pipeline, taste read/write, category and status helpers, instance settings, import/export, OG template rendering), `src/db/` (connection, migration runner, first-boot seed) and `migrations/*.sql`.
 - `client/` is a Vite + vanilla TypeScript app, no UI framework: components are plain functions returning DOM elements, pages live under `src/pages/` and are lazy-loaded by the history-API router.
 
 ## Key design decisions
@@ -20,7 +20,7 @@ Taster is a single Node.js process: a Fastify 5 server that serves the JSON API,
 
 ## Theming
 
-Themes are a CSS custom-property contract. `client/src/styles/themes/default.css` defines every variable (`--bg`, `--fg`, `--accent`, shadows...) for light (`:root`) and dark (`[data-theme="dark"]`); `client/src/styles/app.css` maps them onto Tailwind v4 tokens with `@theme inline`, so utilities like `bg-elev` resolve through the active theme. `client/src/lib/theme.ts` persists the choice in localStorage and falls back to `prefers-color-scheme`. A future theme is one more CSS file redefining the same variables plus an entry in the `THEMES` registry; components never change. Category accents flow through a `--cat-color` inline variable.
+Themes are a CSS custom-property contract. `client/src/styles/themes/default.css` defines every variable (`--bg`, `--fg`, `--accent`, shadows...) for light (`:root`) and dark (`[data-theme="dark"]`); `client/src/styles/app.css` maps them onto Tailwind v4 tokens with `@theme inline`, so utilities like `bg-elev` resolve through the active theme. `client/src/lib/theme.ts` persists the choice in localStorage and falls back to `prefers-color-scheme`. Extra themes are plain CSS files dropped in `DATA_DIR/themes`, served under `/themes/` and picked in the admin's Application tab; a theme file redefines the same variables, so components never change. Category accents flow through a `--cat-color` inline variable.
 
 ## GPS links
 

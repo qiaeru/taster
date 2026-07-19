@@ -84,6 +84,7 @@ export const config = {
   host: process.env.HOST || "0.0.0.0",
   dbPath: process.env.DB_PATH || resolve(DATA_DIR, "taster.db"),
   uploadsDir: resolve(DATA_DIR, "uploads"),
+  themesDir: resolve(DATA_DIR, "themes"),
   sessionKey: sessionKey(SESSION_SECRET),
   cookieSecure: bool("COOKIE_SECURE", NODE_ENV === "production"),
   trustProxy: trustProxy(),

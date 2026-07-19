@@ -30,7 +30,7 @@ All three set `TRUST_PROXY=1` and `COOKIE_SECURE=1` and pass `PUBLIC_URL` so Ope
 
 ## Data and backups
 
-Everything lives in the mounted `var/` folder: `taster.db` (plus its `-wal`/`-shm` companions) and `uploads/`. Back that folder up; restoring it on a fresh container restores the whole instance. The JSON export (admin, Import and export tab, "Include images") is a complementary portable backup, alongside the categories export from the same tab.
+Everything lives in the mounted `var/` folder: `taster.db` (plus its `-wal`/`-shm` companions), `uploads/` and the optional `themes/`. Back that folder up; restoring it on a fresh container restores the whole instance. The JSON export (admin, Import and export tab, "Include images") is a complementary portable backup, alongside the categories export from the same tab.
 
 ## Upgrades
 

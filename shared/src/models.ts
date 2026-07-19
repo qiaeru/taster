@@ -122,6 +122,16 @@ export interface StatusesInput {
   statuses: { id?: number; name: string }[];
 }
 
+/** Instance-wide settings returned by GET /api/settings, editable by the admin. */
+export interface AppSettings {
+  /** Display name of the instance; "Taster" when the owner has not renamed it. */
+  appName: string;
+  /** Stylesheet name under DATA_DIR/themes, or "default" for the built-in theme. */
+  theme: string;
+  /** Locale served to first-time visitors; "auto" follows the browser language. */
+  defaultLocale: "auto" | "fr" | "en";
+}
+
 export interface SessionInfo {
   authenticated: boolean;
   mustChangePassword: boolean;

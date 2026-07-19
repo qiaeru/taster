@@ -4,6 +4,7 @@
 
 import type {
   AdminTasteSummary,
+  AppSettings,
   Category,
   CategoryInput,
   SessionInfo,
@@ -116,6 +117,7 @@ export function invalidateCatalog(): void {
 export const publicApi = {
   tasteDetail: (id: string) => api.get<TasteDetail>(`/api/tastes/${id}`),
   tags: () => api.get<{ id: number; name: string }[]>("/api/tags"),
+  settings: () => api.get<AppSettings>("/api/settings"),
 };
 
 // The session answer is constant for the whole visit (it only changes through
@@ -207,6 +209,10 @@ export const adminApi = {
   deleteTag: (id: number) => api.delete<{ ok: boolean }>(`/api/admin/tags/${id}`),
   setStatuses: (id: number, statuses: { id?: number; name: string }[]) =>
     api.put<Category>(`/api/admin/categories/${id}/statuses`, { statuses }),
+  themes: () => api.get<{ themes: string[] }>("/api/admin/settings/themes"),
+  updateSettings: (input: AppSettings) => api.put<AppSettings>("/api/admin/settings", input),
+  wipeTastes: () => api.delete<{ affected: number }>("/api/admin/tastes"),
+  wipeCategories: () => api.delete<{ affected: number }>("/api/admin/categories"),
 };
 
 export function thumbUrl(imageFile: string): string {

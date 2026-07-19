@@ -6,6 +6,7 @@ import { loadCatalog, type Catalog } from "../api.js";
 import { renderHeader } from "../components/Header.js";
 import { icon } from "../components/Icon.js";
 import { t, locale$ } from "../i18n/index.js";
+import { appName } from "../lib/appSettings.js";
 
 function statTile(value: string, label: string, href: string): HTMLElement {
   const tile = document.createElement("a");
@@ -79,7 +80,7 @@ export function renderStats(root: HTMLElement): () => void {
   h1.className = "page-title";
   h1.textContent = t("stats.title");
   main.appendChild(h1);
-  document.title = `${t("stats.title")} · Taster`;
+  document.title = `${t("stats.title")} · ${appName()}`;
 
   const boot = (force: boolean): void => {
     loadCatalog(force)
@@ -229,6 +230,6 @@ export function renderStats(root: HTMLElement): () => void {
 
   return () => {
     disposed = true;
-    document.title = "Taster";
+    document.title = appName();
   };
 }

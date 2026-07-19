@@ -1729,9 +1729,6 @@
     align-items: center;
     gap: 0.25rem;
   }
-  .admin-updated {
-    font-size: 0.75rem;
-  }
 
   .category-list {
     display: grid;

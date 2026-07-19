@@ -23,7 +23,7 @@ import { toast } from "../components/Toaster.js";
 import { confirmDialog } from "../components/ConfirmDialog.js";
 import { t } from "../i18n/index.js";
 import { dragReorder, moveItem } from "../lib/dragReorder.js";
-import { formatDateTime, searchFold } from "../lib/format.js";
+import { searchFold } from "../lib/format.js";
 import { navigate, rerender } from "../router.js";
 import { renderImportExportTab } from "./adminImportExport.js";
 
@@ -197,6 +197,9 @@ function renderPasswordChange(main: HTMLElement, forced: boolean, onDone: () => 
 async function renderTastesTab(body: HTMLElement): Promise<void> {
   const [tastes, catalog] = await Promise.all([adminApi.tastes(), loadCatalog()]);
   if (body.dataset.tab !== "tastes") return; // another tab took over meanwhile
+  // Alphabetical, accent-insensitive: scanning for a title beats knowing when
+  // it was last touched (the API's recency order).
+  tastes.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
   const categories = new Map(catalog.categories.map((c) => [c.id, c]));
   body.innerHTML = "";
 
@@ -403,10 +406,6 @@ async function renderTastesTab(body: HTMLElement): Promise<void> {
       badge.appendChild(document.createTextNode(category.name));
       meta.appendChild(badge);
     }
-    const updated = document.createElement("span");
-    updated.className = "muted admin-updated";
-    updated.textContent = formatDateTime(taste.updatedAt);
-    meta.appendChild(updated);
     main.appendChild(meta);
     el.appendChild(main);
 

@@ -577,9 +577,11 @@
     display: flex;
     gap: 0.5rem;
     overflow-x: auto;
-    /* The scrollbar lives in this padding; no extra margin, so the gap to the
-       filter bar below reads the same as the gaps inside it (0.5rem). */
+    /* The scrollbar lives in this padding, so on touch screens (overlay
+       scrollbar) it reads as empty space; the margin keeps a real gap to the
+       filter bar even when a classic scrollbar fills the padding. */
     padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
     scrollbar-width: thin;
   }
   .cat-chip {

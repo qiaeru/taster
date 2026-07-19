@@ -67,7 +67,7 @@
   "detail.externalReview": "Lire la critique",
   "detail.related": "À voir aussi…",
   "detail.notFound": "Ce goût n’existe pas (ou plus).",
-  "detail.addedOn": "Ajouté le {{date}}.",
+  "detail.addedOn": "Goût ajouté le {{date}}.",
   "detail.edit": "Modifier",
   "detail.image.zoom": "Agrandir l’image",
   "detail.prev": "Goût précédent",

@@ -14,6 +14,7 @@ import { icon } from "../components/Icon.js";
 import { openLightbox } from "../components/Lightbox.js";
 import { tip } from "../components/Tooltip.js";
 import { t } from "../i18n/index.js";
+import { appName } from "../lib/appSettings.js";
 import { formatPartialDate, formatDateTime } from "../lib/format.js";
 import { isTypingTarget } from "../lib/dom.js";
 import { readListOrder } from "../lib/listOrder.js";
@@ -65,7 +66,7 @@ export function renderDetail(
       return;
     }
     if (disposed) return;
-    document.title = `${detail.title} · Taster`;
+    document.title = `${detail.title} · ${appName()}`;
 
     let catalog: Catalog;
     let session: { authenticated: boolean; mustChangePassword: boolean };
@@ -237,6 +238,11 @@ export function renderDetail(
     }
     head.appendChild(meta);
 
+    const added = document.createElement("p");
+    added.className = "muted detail-added";
+    added.textContent = t("detail.addedOn", { date: formatDateTime(detail.createdAt) });
+    head.appendChild(added);
+
     if (detail.tags.length) {
       const tagRow = document.createElement("div");
       tagRow.className = "card-chips";
@@ -356,16 +362,11 @@ export function renderDetail(
       relatedWrap.appendChild(grid);
       main.appendChild(relatedWrap);
     }
-
-    const added = document.createElement("p");
-    added.className = "muted detail-added";
-    added.textContent = t("detail.addedOn", { date: formatDateTime(detail.createdAt) });
-    main.appendChild(added);
   })();
 
   return () => {
     disposed = true;
     if (onKeyNav) document.removeEventListener("keydown", onKeyNav);
-    document.title = "Taster";
+    document.title = appName();
   };
 }

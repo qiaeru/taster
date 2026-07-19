@@ -67,7 +67,7 @@
   "detail.externalReview": "Read the full review",
   "detail.related": "You may also like…",
   "detail.notFound": "This taste doesn't exist (anymore).",
-  "detail.addedOn": "Added on {{date}}.",
+  "detail.addedOn": "Taste added on {{date}}.",
   "detail.edit": "Edit",
   "detail.image.zoom": "Enlarge the image",
   "detail.prev": "Previous taste",

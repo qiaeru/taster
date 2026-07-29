@@ -21,7 +21,7 @@
     "dompurify": "^3.4.12",
     "heroicons": "^2.2.0",
     "marked": "^18.0.7",
-    "simple-icons": "^16.27.0"
+    "simple-icons": "^16.27.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

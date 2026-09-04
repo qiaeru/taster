@@ -19,20 +19,26 @@ function bool(name: string, defaultValue: boolean): boolean {
   return raw === "1" || raw.toLowerCase() === "true";
 }
 
-// TRUST_PROXY is the NUMBER of reverse proxies in front of the app (0 = none).
-// Passing a count to Fastify makes it read the client address that our own
-// proxy appended to X-Forwarded-For; `true` would trust the whole header,
-// which the client controls, letting an attacker spoof any IP to the per-IP
-// rate limits and login lockout. "true" is accepted as 1 for compatibility.
-function trustProxy(): number | false {
-  const raw = (process.env.TRUST_PROXY || "").trim().toLowerCase();
-  if (!raw || raw === "0" || raw === "false") return false;
-  if (raw === "true") return 1;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isInteger(n) || n < 0) {
-    throw new Error("Environment variable TRUST_PROXY must be the number of proxies (0, 1, 2...)");
+// TRUST_PROXY lists the reverse proxies whose X-Forwarded-* headers are
+// honored: IPs or CIDRs, comma separated, or the @fastify/proxy-addr presets
+// `loopback`, `linklocal` and `uniquelocal` (private ranges). "1" and "true"
+// mean `loopback,uniquelocal`, which covers a proxy on the same host or Docker
+// network. Fastify walks X-Forwarded-For from the right and stops at the first
+// address outside the list, so a client cannot spoof its IP to the per-IP rate
+// limits and login lockout. Hop counts ("2") are rejected: fastify 5.12.1
+// disabled them because they never checked the connecting peer, so anyone
+// reaching the app port directly could forge the headers (GHSA-3m5p-2c4r-xxw2).
+function trustProxy(): string | false {
+  const raw = (process.env.TRUST_PROXY || "").trim();
+  const lower = raw.toLowerCase();
+  if (!raw || lower === "0" || lower === "false") return false;
+  if (lower === "1" || lower === "true") return "loopback,uniquelocal";
+  if (/^\d+$/.test(raw)) {
+    throw new Error(
+      "Environment variable TRUST_PROXY must be 0, 1, or the comma-separated IPs/CIDRs of the reverse proxies"
+    );
   }
-  return n === 0 ? false : n;
+  return raw;
 }
 
 function int(name: string, defaultValue: number): number {

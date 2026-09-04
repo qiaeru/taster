@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - On phones, the category chips row no longer touches the filter row below it.
 
+### Security
+
+- `TRUST_PROXY` now names the reverse proxies (IPs, CIDRs, or `1` for a proxy on localhost or a private network, which the bundled Docker stacks use) instead of counting hops: fastify 5.12.1 disabled hop counts because they never checked who was connecting, so anyone reaching the app port directly could forge `X-Forwarded-*` headers. Instances set to `1` keep working unchanged; a higher count is rejected at startup with a message asking for the proxy addresses.
+
 ## [0.4.0] - 2026-07-18
 
 ### Added

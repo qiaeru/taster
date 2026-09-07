@@ -136,10 +136,10 @@ const ICONS: Record<string, string> = {
 
 // Every Heroicons 24/outline SVG as a lazy raw-string chunk; the initial
 // bundle only pays for the keys, each icon downloads on first use.
-const OUTLINE_ICONS = import.meta.glob<string>(
-  "../../../node_modules/heroicons/24/outline/*.svg",
-  { query: "?raw", import: "default" }
-);
+const OUTLINE_ICONS = import.meta.glob<string>("../../../node_modules/heroicons/24/outline/*.svg", {
+  query: "?raw",
+  import: "default",
+});
 
 function outlineKey(name: string): string {
   return `../../../node_modules/heroicons/24/outline/${name}.svg`;

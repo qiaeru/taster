@@ -39,11 +39,7 @@ export function cardContext(categories: Category[]): CardContext {
 
 // Heart as a toggle for admins: shows the state on every entry and flips it
 // in place. Also layered above the stretched link.
-function favoriteToggle(
-  taste: TasteSummary,
-  ctx: CardContext,
-  className: string
-): HTMLElement {
+function favoriteToggle(taste: TasteSummary, ctx: CardContext, className: string): HTMLElement {
   const heart = document.createElement("button");
   heart.type = "button";
   heart.className = className;

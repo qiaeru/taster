@@ -45,7 +45,8 @@ function barRow(
   fill.className = "bar-fill";
   // A zero count gets a truly empty bar; the 2% floor only keeps small
   // non-zero counts visible.
-  fill.style.width = count > 0 && max > 0 ? `${Math.max(2, Math.round((count / max) * 100))}%` : "0";
+  fill.style.width =
+    count > 0 && max > 0 ? `${Math.max(2, Math.round((count / max) * 100))}%` : "0";
   if (color) fill.style.setProperty("--bar-color", color);
   track.appendChild(fill);
   row.appendChild(track);
@@ -142,7 +143,9 @@ export function renderStats(root: HTMLElement): () => void {
       label.style.setProperty("--cat-color", c.color);
       label.appendChild(icon(c.icon, "icon icon-sm"));
       label.appendChild(document.createTextNode(c.name));
-      byCat.body.appendChild(barRow(label, n, maxCat, `/?cat=${encodeURIComponent(c.slug)}`, c.color));
+      byCat.body.appendChild(
+        barRow(label, n, maxCat, `/?cat=${encodeURIComponent(c.slug)}`, c.color)
+      );
     }
     main.appendChild(byCat.wrap);
 
@@ -168,7 +171,14 @@ export function renderStats(root: HTMLElement): () => void {
         label.appendChild(icon(c.icon, "icon icon-sm"));
         label.appendChild(document.createTextNode(c.name));
         avgSection.body.appendChild(
-          barRow(label, avg, 5, `/?cat=${encodeURIComponent(c.slug)}`, c.color, `${format.format(avg)} ★`)
+          barRow(
+            label,
+            avg,
+            5,
+            `/?cat=${encodeURIComponent(c.slug)}`,
+            c.color,
+            `${format.format(avg)} ★`
+          )
         );
       }
       main.appendChild(avgSection.wrap);
@@ -182,7 +192,9 @@ export function renderStats(root: HTMLElement): () => void {
       const byRating = section(t("stats.byRating"));
       const maxRating = Math.max(...ratingCounts.map((x) => x.n));
       for (const { r, n } of ratingCounts) {
-        byRating.body.appendChild(barRow(`${"★".repeat(r)} ${t(`rating.${r}`)}`, n, maxRating, `/?r=${r}`));
+        byRating.body.appendChild(
+          barRow(`${"★".repeat(r)} ${t(`rating.${r}`)}`, n, maxRating, `/?r=${r}`)
+        );
       }
       main.appendChild(byRating.wrap);
     }

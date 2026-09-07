@@ -6,7 +6,15 @@
 // favorite toggles.
 
 import type { Category, ImageFocus, ReviewSection, TasteDetail, TasteInput } from "@taster/shared";
-import { adminApi, authApi, publicApi, api, ApiError, invalidateCatalog, displayUrl } from "../api.js";
+import {
+  adminApi,
+  authApi,
+  publicApi,
+  api,
+  ApiError,
+  invalidateCatalog,
+  displayUrl,
+} from "../api.js";
 import { renderHeader } from "../components/Header.js";
 import { icon } from "../components/Icon.js";
 import { selectMenu } from "../components/Select.js";
@@ -219,7 +227,11 @@ export function renderTasteForm(
     const fillStatuses = (): void => {
       const category = categories.find((c) => c.id === Number(categorySel.get()));
       const statuses = category?.statuses ?? [];
-      const wanted = draft ? draft.statusId : detail?.statusId != null ? String(detail.statusId) : "";
+      const wanted = draft
+        ? draft.statusId
+        : detail?.statusId != null
+          ? String(detail.statusId)
+          : "";
       statusSel.setOptions(
         [
           { value: "", label: t("form.status.none") },
@@ -233,13 +245,16 @@ export function renderTasteForm(
 
     // Rating
     const rating = starInput(
-      draft ? draft.rating ?? null : detail?.rating ?? null,
+      draft ? (draft.rating ?? null) : (detail?.rating ?? null),
       t("form.rating")
     );
     form.appendChild(field(t("form.rating"), rating.el));
 
     // Tags
-    const tags = tagInput(draft?.tags ?? detail?.tags ?? [], existingTags.map((x) => x.name));
+    const tags = tagInput(
+      draft?.tags ?? detail?.tags ?? [],
+      existingTags.map((x) => x.name)
+    );
     form.appendChild(field(t("form.tags"), tags.el, t("form.tags.hint")));
 
     // Description
@@ -247,17 +262,19 @@ export function renderTasteForm(
     description.className = "textarea";
     description.rows = 4;
     description.maxLength = 5000;
-    description.value = draft ? draft.description ?? "" : detail?.description ?? "";
+    description.value = draft ? (draft.description ?? "") : (detail?.description ?? "");
     form.appendChild(field(t("form.description"), description, t("form.description.hint")));
 
     // Date
-    const date = datePrecisionPicker(draft ? draft.refDate : detail?.refDate ?? null);
+    const date = datePrecisionPicker(draft ? draft.refDate : (detail?.refDate ?? null));
     form.appendChild(field(t("form.date"), date.el));
 
     // Image
     let imageBlob: { blob: Blob; filename: string } | null = null;
     let removeImage = false;
-    let imageFocus: ImageFocus | null = draft ? draft.imageFocus ?? null : detail?.imageFocus ?? null;
+    let imageFocus: ImageFocus | null = draft
+      ? (draft.imageFocus ?? null)
+      : (detail?.imageFocus ?? null);
     const imageWrap = document.createElement("div");
     imageWrap.className = "image-field";
     const preview = document.createElement("div");
@@ -349,9 +366,7 @@ export function renderTasteForm(
     chooseBtn.htmlFor = "image-file";
     chooseBtn.appendChild(icon("photo", "icon icon-sm"));
     chooseBtn.appendChild(
-      document.createTextNode(
-        detail?.imageFile ? t("form.image.replace") : t("form.image.choose")
-      )
+      document.createTextNode(detail?.imageFile ? t("form.image.replace") : t("form.image.choose"))
     );
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
@@ -409,7 +424,7 @@ export function renderTasteForm(
     imageAlt.type = "text";
     imageAlt.className = "input";
     imageAlt.maxLength = 300;
-    imageAlt.value = draft ? draft.imageAlt ?? "" : detail?.imageAlt ?? "";
+    imageAlt.value = draft ? (draft.imageAlt ?? "") : (detail?.imageAlt ?? "");
     const imageAltField = field(t("form.imageAlt"), imageAlt, t("form.imageAlt.hint"));
     form.appendChild(imageAltField);
     paintPreview();
@@ -451,13 +466,13 @@ export function renderTasteForm(
     reviewWrap.appendChild(modeRow);
 
     let externalMode = draft ? draft.externalMode : Boolean(detail?.externalReviewUrl);
-    const sections = sectionEditor(draft ? draft.sections : detail?.sections ?? []);
+    const sections = sectionEditor(draft ? draft.sections : (detail?.sections ?? []));
     const externalUrl = document.createElement("input");
     externalUrl.type = "url";
     externalUrl.className = "input";
     externalUrl.placeholder = "https://…";
     externalUrl.setAttribute("aria-label", t("form.review.externalUrl"));
-    externalUrl.value = draft ? draft.externalUrl : detail?.externalReviewUrl ?? "";
+    externalUrl.value = draft ? draft.externalUrl : (detail?.externalReviewUrl ?? "");
     const externalField = field(t("form.review.externalUrl"), externalUrl);
     reviewWrap.append(sections.el, externalField);
 
@@ -480,7 +495,7 @@ export function renderTasteForm(
 
     // Reference links
     const links: { label: string; url: string }[] = (
-      draft ? draft.links : detail?.links ?? []
+      draft ? draft.links : (detail?.links ?? [])
     ).map((l) => ({ ...l }));
     const linksWrap = document.createElement("div");
     linksWrap.className = "links-editor";
@@ -525,14 +540,24 @@ export function renderTasteForm(
           btn.addEventListener("click", onClick);
           return btn;
         };
-        const up = mkTool("arrow-up", t("form.links.moveUp"), () => {
-          moveItem(links, index, index - 1);
-          paintLinks();
-        }, index === 0);
-        const down = mkTool("arrow-down", t("form.links.moveDown"), () => {
-          moveItem(links, index, index + 1);
-          paintLinks();
-        }, index === links.length - 1);
+        const up = mkTool(
+          "arrow-up",
+          t("form.links.moveUp"),
+          () => {
+            moveItem(links, index, index - 1);
+            paintLinks();
+          },
+          index === 0
+        );
+        const down = mkTool(
+          "arrow-down",
+          t("form.links.moveDown"),
+          () => {
+            moveItem(links, index, index + 1);
+            paintLinks();
+          },
+          index === links.length - 1
+        );
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "icon-btn btn-danger";
@@ -563,10 +588,13 @@ export function renderTasteForm(
     // Published + favorite
     const published = checkbox(
       t("form.published"),
-      draft ? draft.published : detail?.published ?? true,
+      draft ? draft.published : (detail?.published ?? true),
       t("form.published.hint")
     );
-    const favorite = checkbox(t("form.favorite"), draft ? draft.favorite : detail?.favorite ?? false);
+    const favorite = checkbox(
+      t("form.favorite"),
+      draft ? draft.favorite : (detail?.favorite ?? false)
+    );
     const togglesRow = document.createElement("div");
     togglesRow.className = "toggles-row";
     togglesRow.append(published.el, favorite.el);
@@ -709,7 +737,8 @@ export function renderTasteForm(
         imageFocus,
         // No image, no image description: a removed image drops its alt too.
         imageAlt: hasImage() ? imageAlt.value.trim() || null : null,
-        externalReviewUrl: externalMode && externalUrl.value.trim() ? externalUrl.value.trim() : null,
+        externalReviewUrl:
+          externalMode && externalUrl.value.trim() ? externalUrl.value.trim() : null,
         sections: externalMode ? [] : sections.get(),
         links: links.filter((l) => l.label.trim() || l.url.trim()),
         published: published.input.checked,

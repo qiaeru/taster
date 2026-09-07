@@ -52,8 +52,7 @@ export default async function adminTagRoutes(app: FastifyInstance) {
       if (!name || name.includes(",")) return reply.code(400).send({ error: "INVALID_TAGS" });
 
       const tag = db.prepare("SELECT id, name FROM tags WHERE id = ?").get(id) as
-        | { id: number; name: string }
-        | undefined;
+        { id: number; name: string } | undefined;
       if (!tag) return reply.code(404).send({ error: "NOT_FOUND" });
 
       const existing = db

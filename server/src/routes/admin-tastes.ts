@@ -14,7 +14,12 @@ import {
   setTasteImage,
   TasteValidationError,
 } from "../lib/tasteWrite.js";
-import { storeImage, deleteImageFiles, ImageValidationError, MAX_IMAGE_BYTES } from "../lib/images.js";
+import {
+  storeImage,
+  deleteImageFiles,
+  ImageValidationError,
+  MAX_IMAGE_BYTES,
+} from "../lib/images.js";
 import { getDb, bumpDataRevision } from "../db/index.js";
 
 const UUID_PARAMS = {

@@ -26,7 +26,12 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  retried = false
+): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["content-type"] = "application/json";
   const mutating = method !== "GET" && method !== "HEAD";

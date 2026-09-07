@@ -32,7 +32,9 @@ export default async function adminCategoryRoutes(app: FastifyInstance) {
     ).m;
     const id = transaction(() => {
       const info = db
-        .prepare("INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)")
+        .prepare(
+          "INSERT INTO categories (slug, name, icon, color, sort_order) VALUES (?, ?, ?, ?, ?)"
+        )
         .run(slug, name, icon, color, maxOrder + 1);
       const statuses = GENERIC_STATUSES[seededLocale()] ?? GENERIC_STATUSES.en;
       const insert = db.prepare(

@@ -153,7 +153,8 @@ async function go(href: string): Promise<void> {
 }
 
 export function navigate(path: string, params?: Record<string, string>): void {
-  const q = params && Object.keys(params).length ? "?" + new URLSearchParams(params).toString() : "";
+  const q =
+    params && Object.keys(params).length ? "?" + new URLSearchParams(params).toString() : "";
   void go(`${path}${q}`);
 }
 

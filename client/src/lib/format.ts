@@ -26,8 +26,5 @@ export function formatDateTime(sqliteUtc: string): string {
 
 /** Lowercase + strip diacritics, so "chihiro" matches "Chihirô". */
 export function searchFold(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+  return value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }

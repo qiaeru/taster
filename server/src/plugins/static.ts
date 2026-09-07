@@ -69,7 +69,10 @@ export default fp(async function staticPlugin(app) {
       return reply.code(503).send({ error: "CLIENT_BUNDLE_MISSING" });
     }
     const html = renderIndexHtml(request.url);
-    return reply.code(200).type("text/html; charset=utf-8").header("Cache-Control", "no-cache")
+    return reply
+      .code(200)
+      .type("text/html; charset=utf-8")
+      .header("Cache-Control", "no-cache")
       .send(html);
   });
 });

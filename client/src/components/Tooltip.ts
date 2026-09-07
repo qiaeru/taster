@@ -7,7 +7,12 @@
 type TipPos = "top" | "bottom";
 type TipAlign = "center" | "start" | "end";
 
-export function tip(el: HTMLElement, text: string, pos: TipPos = "top", align: TipAlign = "center"): void {
+export function tip(
+  el: HTMLElement,
+  text: string,
+  pos: TipPos = "top",
+  align: TipAlign = "center"
+): void {
   el.dataset.tip = text;
   if (pos !== "top") el.dataset.tipPos = pos;
   if (align !== "center") el.dataset.tipAlign = align;

@@ -73,7 +73,11 @@ function orderedTaste(id: string, withImage: boolean): ImportTaste | null {
       if (section.subtitle) s.subtitle = section.subtitle;
       if (section.rating !== null) s.rating = section.rating;
       // Key order: subtitle, rating, text.
-      return { ...(s.subtitle ? { subtitle: s.subtitle } : {}), ...(s.rating ? { rating: s.rating } : {}), text: s.text };
+      return {
+        ...(s.subtitle ? { subtitle: s.subtitle } : {}),
+        ...(s.rating ? { rating: s.rating } : {}),
+        text: s.text,
+      };
     });
   }
   if (detail.links.length) out.links = detail.links;
@@ -98,9 +102,9 @@ export function exportTastes(ids: string[] | null, withImages: boolean): string 
   const db = getDb();
   const list =
     ids ??
-    (
-      db.prepare("SELECT id FROM tastes ORDER BY created_at, id").all() as { id: string }[]
-    ).map((r) => r.id);
+    (db.prepare("SELECT id FROM tastes ORDER BY created_at, id").all() as { id: string }[]).map(
+      (r) => r.id
+    );
   const file: ImportFile = {
     app: "taster",
     version: 1,
@@ -119,8 +123,7 @@ function resolveCategory(ref: unknown): number | null {
   if (typeof ref !== "string" || !ref.trim()) return null;
   const db = getDb();
   const bySlug = db.prepare("SELECT id FROM categories WHERE slug = ?").get(ref.trim()) as
-    | { id: number }
-    | undefined;
+    { id: number } | undefined;
   if (bySlug) return bySlug.id;
   const byName = db
     .prepare("SELECT id FROM categories WHERE name = ? COLLATE NOCASE")
@@ -248,8 +251,7 @@ export async function importTastes(payload: unknown, dryRun = false): Promise<Im
       const existing =
         typeof item.id === "string"
           ? (db.prepare("SELECT id FROM tastes WHERE id = ?").get(item.id) as
-              | { id: string }
-              | undefined)
+              { id: string } | undefined)
           : undefined;
 
       if (existing) {
@@ -264,9 +266,7 @@ export async function importTastes(payload: unknown, dryRun = false): Promise<Im
           // the same file stay idempotent.
           const id = createTaste(
             clean,
-            typeof item.id === "string" && /^[0-9a-fA-F-]{36}$/.test(item.id)
-              ? item.id
-              : undefined,
+            typeof item.id === "string" && /^[0-9a-fA-F-]{36}$/.test(item.id) ? item.id : undefined,
             normalizeCreatedAt(item.createdAt)
           );
           if (imageFile) setTasteImage(id, imageFile);
@@ -340,9 +340,7 @@ export function importCategories(payload: unknown, dryRun = false): CategoriesIm
         if (
           !Array.isArray(item.statuses) ||
           item.statuses.length > 30 ||
-          item.statuses.some(
-            (s) => typeof s !== "string" || !s.trim() || s.length > 100
-          )
+          item.statuses.some((s) => typeof s !== "string" || !s.trim() || s.length > 100)
         ) {
           errors.push({ index, code: "INVALID_STATUSES" });
           return;
@@ -382,7 +380,8 @@ export function importCategories(payload: unknown, dryRun = false): CategoriesIm
           // A provided slug is honored when well-formed and free; anything else
           // falls back to a slug derived from the name.
           const finalSlug =
-            slug && /^[a-z0-9-]{1,100}$/.test(slug) &&
+            slug &&
+            /^[a-z0-9-]{1,100}$/.test(slug) &&
             !db.prepare("SELECT 1 FROM categories WHERE slug = ?").get(slug)
               ? slug
               : uniqueSlug(name);

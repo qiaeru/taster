@@ -85,12 +85,22 @@ export async function storeImage(buf: Buffer): Promise<string> {
     const base = sharp(buf, { failOn: "error", limitInputPixels: 50_000_000 }).rotate();
     await base
       .clone()
-      .resize({ width: DISPLAY_MAX_EDGE, height: DISPLAY_MAX_EDGE, fit: "inside", withoutEnlargement: true })
+      .resize({
+        width: DISPLAY_MAX_EDGE,
+        height: DISPLAY_MAX_EDGE,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
       .webp({ quality: WEBP_QUALITY })
       .toFile(resolve(config.uploadsDir, displayFile));
     await base
       .clone()
-      .resize({ width: THUMB_MAX_EDGE, height: THUMB_MAX_EDGE, fit: "inside", withoutEnlargement: true })
+      .resize({
+        width: THUMB_MAX_EDGE,
+        height: THUMB_MAX_EDGE,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
       .webp({ quality: WEBP_QUALITY })
       .toFile(resolve(config.uploadsDir, `${id}.thumb.webp`));
   } catch (err) {

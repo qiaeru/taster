@@ -93,8 +93,7 @@ export const GENERIC_STATUSES: Record<string, string[]> = {
 export function seededLocale(): string {
   const db = getDb();
   const row = db.prepare("SELECT value FROM settings WHERE key = 'seed_locale'").get() as
-    | { value: string }
-    | undefined;
+    { value: string } | undefined;
   return row?.value === "fr" ? "fr" : "en";
 }
 
@@ -148,8 +147,7 @@ export async function maybeResetAdmin(logger?: MinimalLogger): Promise<void> {
   const db = getDb();
   const hash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
   const admin = db.prepare("SELECT id FROM users ORDER BY id LIMIT 1").get() as
-    | { id: number }
-    | undefined;
+    { id: number } | undefined;
   if (!admin) return;
   db.prepare(
     `UPDATE users SET username = ?, password_hash = ?, must_change_password = 1,

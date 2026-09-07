@@ -194,7 +194,8 @@ export function validateTasteInput(input: TasteInput): CleanTaste {
       throw new TasteValidationError("INVALID_SECTIONS");
     }
     for (const raw of input.sections) {
-      if (typeof raw !== "object" || raw === null) throw new TasteValidationError("INVALID_SECTIONS");
+      if (typeof raw !== "object" || raw === null)
+        throw new TasteValidationError("INVALID_SECTIONS");
       const subtitle =
         raw.subtitle === undefined || raw.subtitle === null || raw.subtitle === ""
           ? null
@@ -361,8 +362,7 @@ export const updateTaste = transaction((tasteId: string, clean: CleanTaste): boo
 export function deleteTaste(tasteId: string): boolean {
   const db = getDb();
   const row = db.prepare("SELECT image_file AS imageFile FROM tastes WHERE id = ?").get(tasteId) as
-    | { imageFile: string | null }
-    | undefined;
+    { imageFile: string | null } | undefined;
   if (!row) return false;
   transaction(() => {
     db.prepare("DELETE FROM tastes WHERE id = ?").run(tasteId);
@@ -377,8 +377,7 @@ export function deleteTaste(tasteId: string): boolean {
 export function setTasteImage(tasteId: string, imageFile: string | null): boolean {
   const db = getDb();
   const row = db.prepare("SELECT image_file AS imageFile FROM tastes WHERE id = ?").get(tasteId) as
-    | { imageFile: string | null }
-    | undefined;
+    { imageFile: string | null } | undefined;
   if (!row) return false;
   if (imageFile === null) {
     // The alt text describes the removed picture: a later upload must not

@@ -95,21 +95,32 @@ export function sectionEditor(initial: ReviewSection[]): SectionEditorWidget {
         return btn;
       };
       tools.appendChild(
-        mkTool("arrow-up", t("form.section.moveUp"), () => {
-          moveItem(blocks, index, index - 1);
-          paint();
-        }, index === 0)
+        mkTool(
+          "arrow-up",
+          t("form.section.moveUp"),
+          () => {
+            moveItem(blocks, index, index - 1);
+            paint();
+          },
+          index === 0
+        )
       );
       tools.appendChild(
-        mkTool("arrow-down", t("form.section.moveDown"), () => {
-          moveItem(blocks, index, index + 1);
-          paint();
-        }, index === blocks.length - 1)
+        mkTool(
+          "arrow-down",
+          t("form.section.moveDown"),
+          () => {
+            moveItem(blocks, index, index + 1);
+            paint();
+          },
+          index === blocks.length - 1
+        )
       );
       tools.appendChild(
         mkTool("trash", t("form.section.remove"), () => {
           blocks.splice(index, 1);
-          if (!blocks.length) blocks.push({ subtitle: "", rating: null, ratingValue: null, text: "" });
+          if (!blocks.length)
+            blocks.push({ subtitle: "", rating: null, ratingValue: null, text: "" });
           paint();
         })
       );

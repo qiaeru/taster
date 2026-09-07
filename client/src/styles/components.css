@@ -46,7 +46,9 @@
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .icon-btn:hover {
     background: var(--bg-sunken);
@@ -79,7 +81,9 @@
     color: var(--fg);
     border: 1px solid var(--border);
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
   }
   .btn:hover {
     border-color: var(--accent);
@@ -224,7 +228,10 @@
     font-size: 0.8rem;
     border-color: var(--border);
     background: var(--bg-elev);
-    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease,
+      border-color 0.15s ease;
   }
   .chip-toggle:hover {
     border-color: var(--accent);
@@ -272,7 +279,9 @@
     opacity: 0;
     pointer-events: none;
     z-index: 60;
-    transition: opacity 0.15s ease, display 0.15s ease allow-discrete;
+    transition:
+      opacity 0.15s ease,
+      display 0.15s ease allow-discrete;
   }
   [data-tip]:hover::after,
   [data-tip]:focus-visible::after {
@@ -597,7 +606,9 @@
     border: 1px solid var(--border);
     cursor: pointer;
     white-space: nowrap;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
   }
   .cat-chip .icon {
     color: var(--cat-color, var(--fg-muted));
@@ -663,7 +674,10 @@
     box-shadow: var(--shadow-card);
     text-decoration: none;
     color: var(--fg);
-    transition: box-shadow 0.2s ease, translate 0.2s ease, border-color 0.2s ease;
+    transition:
+      box-shadow 0.2s ease,
+      translate 0.2s ease,
+      border-color 0.2s ease;
   }
   .taste-card:hover {
     box-shadow: var(--shadow-card-hover);
@@ -832,7 +846,9 @@
     border: 1px solid var(--border);
     text-decoration: none;
     color: var(--fg);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .taste-row:hover {
     border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
@@ -1095,7 +1111,9 @@
     color: transparent;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .spoiler .spoiler-inner {
     visibility: hidden;
@@ -1840,7 +1858,9 @@
   .tag-count {
     flex: none;
     text-decoration: none;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .tag-count:hover {
     background: var(--accent-soft);
@@ -2039,7 +2059,9 @@
     width: 0;
     border-radius: inherit;
     background: var(--danger);
-    transition: width 0.2s ease, background-color 0.2s ease;
+    transition:
+      width 0.2s ease,
+      background-color 0.2s ease;
   }
   .pw-strength-fill[data-score="1"] {
     background: #ff9a44;

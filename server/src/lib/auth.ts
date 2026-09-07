@@ -37,8 +37,7 @@ export function readSessionUser(request: FastifyRequest): CurrentUser | null {
        FROM users WHERE id = ?`
     )
     .get(payload.id) as
-    | { id: number; username: string; mustChangePassword: number; sessionEpoch: number }
-    | undefined;
+    { id: number; username: string; mustChangePassword: number; sessionEpoch: number } | undefined;
   if (!row) return null;
   if (row.sessionEpoch !== payload.epoch) return null;
   return {

@@ -14,10 +14,7 @@ export function starDisplay(rating: Rating | null, size: "sm" | "md" = "md"): HT
   wrap.className = `stars stars-${size}`;
   wrap.setAttribute("role", "img");
   if (rating) {
-    wrap.setAttribute(
-      "aria-label",
-      t("rating.aria", { rating, label: t(`rating.${rating}`) })
-    );
+    wrap.setAttribute("aria-label", t("rating.aria", { rating, label: t(`rating.${rating}`) }));
     tip(wrap, t(`rating.${rating}`));
   } else {
     wrap.setAttribute("aria-label", t("rating.none"));

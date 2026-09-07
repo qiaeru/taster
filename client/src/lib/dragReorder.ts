@@ -66,9 +66,7 @@ export function dragReorder(
         if (!dragged || dragged === row) return;
         e.preventDefault();
         delete row.dataset.dropTarget;
-        const rows = [...container().children].filter(
-          (el) => (el as HTMLElement).dataset.dragRow
-        );
+        const rows = [...container().children].filter((el) => (el as HTMLElement).dataset.dragRow);
         const from = rows.indexOf(dragged);
         const to = rows.indexOf(row);
         dragged = null;

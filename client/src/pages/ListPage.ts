@@ -145,9 +145,7 @@ const foldCache = new WeakMap<TasteSummary, string>();
 function foldedHaystack(taste: TasteSummary): string {
   let folded = foldCache.get(taste);
   if (folded === undefined) {
-    folded = searchFold(
-      taste.title + " " + taste.tags.join(" ") + " " + (taste.description ?? "")
-    );
+    folded = searchFold(taste.title + " " + taste.tags.join(" ") + " " + (taste.description ?? ""));
     foldCache.set(taste, folded);
   }
   return folded;
@@ -243,10 +241,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
   main.appendChild(loading);
 
   const boot = (force: boolean): void => {
-    Promise.all([
-      loadCatalog(force),
-      authApi.session().catch(() => null),
-    ])
+    Promise.all([loadCatalog(force), authApi.session().catch(() => null)])
       .then(([data, session]) => {
         if (disposed) return;
         catalog = data;
@@ -520,9 +515,7 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       min.setAttribute("aria-label", t("filters.removeRating"));
       tip(min, t("filters.removeRating"));
       min.appendChild(
-        document.createTextNode(
-          t("filters.minRatingChip", { stars: "★".repeat(state.minRating) })
-        )
+        document.createTextNode(t("filters.minRatingChip", { stars: "★".repeat(state.minRating) }))
       );
       min.appendChild(icon("x-mark", "icon icon-sm"));
       min.addEventListener("click", () => {
@@ -745,9 +738,10 @@ export function renderList(root: HTMLElement, params: URLSearchParams): () => vo
       // rating is meaningless inside a same-rating section, so entries read
       // alphabetically.
       const ratings: Rating[] = state.rev ? [1, 2, 3, 4, 5] : [5, 4, 3, 2, 1];
-      const groups: Array<{ rating: Rating | null; items: TasteSummary[] }> = ratings.map(
-        (r) => ({ rating: r, items: filtered.filter((x) => x.rating === r) })
-      );
+      const groups: Array<{ rating: Rating | null; items: TasteSummary[] }> = ratings.map((r) => ({
+        rating: r,
+        items: filtered.filter((x) => x.rating === r),
+      }));
       groups.push({ rating: null, items: filtered.filter((x) => x.rating === null) });
       for (const group of groups) group.items = sortTastes(group.items, "title");
       rememberListOrder(groups.flatMap((group) => group.items.map((x) => x.id)));

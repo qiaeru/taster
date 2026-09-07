@@ -26,7 +26,7 @@
     "clean": "node scripts/clean.mjs",
     "typecheck": "tsc -b shared server client",
     "lint": "eslint \"{shared,server,client}/src/**/*.ts\"",
-    "format": "prettier --write \"{shared,server,client}/src/**/*.{ts,css,json,md}\" \"*.md\""
+    "format": "prettier --write \"{shared,server,client}/src/**/*.{ts,css,json}\""
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -8,7 +8,7 @@ import { icon } from "./Icon.js";
 import { t } from "../i18n/index.js";
 
 const REPO_URL = "https://github.com/qiaeru/taster";
-const AUTHOR_URL = "https://qiae.ru";
+const AUTHOR_URL = "https://qiaeru.com";
 
 export function renderFooter(): HTMLElement {
   const footer = document.createElement("footer");
@@ -23,7 +23,7 @@ export function renderFooter(): HTMLElement {
   author.target = "_blank";
   author.rel = "noopener noreferrer";
   author.setAttribute("aria-label", "Qiaeru");
-  // qiae.ru lockup: the head sits on an organic orange blob drawn in CSS
+  // qiaeru.com lockup: the head sits on an organic orange blob drawn in CSS
   // (::before), mirroring the source site. The blob is not part of the SVG.
   const logoWrap = document.createElement("span");
   logoWrap.className = "qiaeru-logo";

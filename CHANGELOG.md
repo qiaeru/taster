@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The admin taste list is sorted alphabetically and no longer shows the last-edited date, leaving titles the room they need before being cut short.
 - Automatic language detection is no longer frozen at the first visit: only an explicit pick in the header persists across visits.
 - The admin Account tab lines up with the other tabs instead of centering its form.
+- The author link in the footer points to qiaeru.com, the new domain.
 
 ### Fixed
 

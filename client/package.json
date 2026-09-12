@@ -18,10 +18,10 @@
     "@zxcvbn-ts/language-common": "^4.1.3",
     "@zxcvbn-ts/language-en": "^4.1.1",
     "@zxcvbn-ts/language-fr": "^4.1.2",
-    "dompurify": "^3.4.14",
+    "dompurify": "^3.4.15",
     "heroicons": "^2.2.0",
     "marked": "^18.0.11",
-    "simple-icons": "^16.29.0"
+    "simple-icons": "^16.30.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
